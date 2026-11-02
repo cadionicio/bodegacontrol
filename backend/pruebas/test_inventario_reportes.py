@@ -10,14 +10,22 @@ from app.servicios.periodos import intervalo
 API = "/api/v1"
 
 
-def test_reposicion_suma_stock_con_referencia_obligatoria(cliente_http, propietario, sql):
-    respuesta = cliente_http.post(f"{API}/inventario/6/entradas", headers=propietario,
-                                  json={"cantidad": 10, "referencia": "Factura F001-123"})
-    assert respuesta.status_code == 201 and respuesta.json()["producto"]["stock"] == 14
-    assert respuesta.json()["producto"]["por_reponer"] is False
-    assert sql("SELECT referencia FROM bc.movimiento_inventario WHERE tipo = 'ENTRADA'") == [("Factura F001-123",)]
-    sin_referencia = cliente_http.post(f"{API}/inventario/6/entradas", headers=propietario, json={"cantidad": 1})
-    assert sin_referencia.status_code == 400
+def test_reposicion_asigna_numero_de_entrada_correlativo(cliente_http, propietario, sql):
+    primera = cliente_http.post(f"{API}/inventario/6/entradas", headers=propietario,
+                                json={"cantidad": 10, "tipo_comprobante": "FACTURA", "numero_comprobante": "F001-123"})
+    segunda = cliente_http.post(f"{API}/inventario/6/entradas", headers=propietario,
+                                json={"cantidad": 2, "tipo_comprobante": "SIN_COMPROBANTE"})
+    assert primera.status_code == 201 and primera.json()["movimiento"]["numero_entrada"] == "E-00001"
+    assert segunda.json()["movimiento"]["numero_entrada"] == "E-00002" and segunda.json()["producto"]["stock"] == 16
+    assert sql("SELECT numero_entrada, tipo_comprobante, referencia FROM bc.movimiento_inventario WHERE tipo = 'ENTRADA' "
+               "ORDER BY 1") == [("E-00001", "FACTURA", "F001-123"), ("E-00002", "SIN_COMPROBANTE", None)]
+
+
+def test_reposicion_valida_tipo_de_comprobante(cliente_http, propietario):
+    sin_tipo = cliente_http.post(f"{API}/inventario/6/entradas", headers=propietario, json={"cantidad": 1})
+    contradictoria = cliente_http.post(f"{API}/inventario/6/entradas", headers=propietario,
+                                       json={"cantidad": 1, "tipo_comprobante": "SIN_COMPROBANTE", "numero_comprobante": "B-1"})
+    assert (sin_tipo.status_code, contradictoria.status_code) == (400, 400)
 
 
 def test_merma_resta_stock_y_congela_el_costo(cliente_http, propietario, sql):

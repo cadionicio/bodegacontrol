@@ -176,15 +176,18 @@ fs.rmSync(DIR, { recursive: true, force: true }); fs.mkdirSync(DIR, { recursive:
     await p.getByText('Movimientos de inventario').first().waitFor();
     await foto('movimientos', true);
   });
-  await paso('Reposición', async () => {
+  await paso('Reposición con N.º de entrada automático', async () => {
     await boton('Reponer').click();
     await p.getByLabel('Cantidad de entrada').fill('24');
     await boton('Validar y registrar').click();
-    await p.getByText('Indique el comprobante', { exact: false }).waitFor();
-    await foto('entrada_validacion', true);
-    await p.getByLabel('Referencia (comprobante)').fill('Factura F001-245');
+    await p.getByText('Elija el tipo de comprobante').waitFor();
+    await p.getByRole('radio', { name: 'Factura' }).click();
+    await p.getByLabel(/N.º de factura/).fill('F001-245');
+    await foto('entrada', true);
     await boton('Validar y registrar').click();
-    await p.getByText('Entrada registrada: +24 und.', { exact: false }).waitFor();
+    await p.getByText('Entrada E-00001 registrada: +24 und.', { exact: false }).waitFor();
+    await p.getByText('Entrada E-00001 · Factura F001-245').waitFor();
+    await foto('entrada_registrada', true);
   });
   await paso('Merma con pérdida estimada', async () => {
     await p.goto(APP + '/#/inventario/merma?producto=4');

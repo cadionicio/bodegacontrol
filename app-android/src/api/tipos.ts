@@ -4,6 +4,7 @@ export type MetodoPago = 'EFECTIVO' | 'YAPE' | 'PLIN' | 'TARJETA';
 export type Modalidad = 'DEBITO' | 'CREDITO';
 export type MotivoMerma = 'VENCIDO' | 'DANADO' | 'FALTANTE' | 'OTRO';
 export type TipoMovimiento = 'ALTA' | 'ENTRADA' | 'SALIDA_VENTA' | 'MERMA';
+export type TipoComprobante = 'BOLETA' | 'FACTURA' | 'GUIA' | 'SIN_COMPROBANTE';
 export type Periodo = 'DIARIO' | 'SEMANAL' | 'MENSUAL' | 'BIMESTRAL' | 'TRIMESTRAL' | 'SEMESTRAL' | 'ANUAL' | 'TODO' | 'PERSONALIZADO';
 
 export interface Usuario { usuario_id: number; nombre: string; correo: string; rol: Rol }
@@ -22,8 +23,9 @@ export interface DatosProducto {
 export interface Movimiento {
   movimiento_id: number; registrada_en: string; tipo: TipoMovimiento; motivo_merma: MotivoMerma | null;
   cantidad: number; variacion: number; saldo_reconstruido: number; operador: string; venta_id: number | null;
-  referencia: string | null;
+  numero_entrada: string | null; tipo_comprobante: TipoComprobante | null; referencia: string | null;
 }
+export interface DetalleInventarioConMovimiento extends DetalleInventario { movimiento: { numero_entrada: string | null } }
 export interface DetalleInventario { producto: Producto; movimientos: Movimiento[] }
 
 export interface Cliente {

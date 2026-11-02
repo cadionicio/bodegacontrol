@@ -23,4 +23,5 @@ export const redondear = (n: number) => Math.round(n * 100) / 100;
 export const NOMBRE_METODO: Record<string, string> = { EFECTIVO: 'Efectivo', YAPE: 'Yape', PLIN: 'Plin', TARJETA: 'Tarjeta' };
 export const nombreMetodo = (metodo: string, modalidad?: string | null) =>
   metodo === 'TARJETA' ? `Visa ${modalidad === 'CREDITO' ? 'crédito' : 'débito'}` : NOMBRE_METODO[metodo] ?? metodo;
+export const NOMBRE_COMPROBANTE: Record<string, string> = { BOLETA: 'Boleta', FACTURA: 'Factura', GUIA: 'Guía de remisión', SIN_COMPROBANTE: 'Sin comprobante' };
 export const NOMBRE_MOTIVO: Record<string, string> = { VENCIDO: 'Vencido', DANADO: 'Dañado', FALTANTE: 'Faltante', OTRO: 'Otro' };

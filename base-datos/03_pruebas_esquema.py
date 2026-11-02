@@ -62,19 +62,19 @@ def registrar_venta(cx, lineas, metodo="EFECTIVO", recibido=100, referencia=None
             cx.execute("INSERT INTO bc.movimiento_inventario (producto_id, usuario_id, detalle_id, tipo, cantidad) "
                        "VALUES (%s, %s, %s, 'SALIDA_VENTA', %s)", (producto, cajero, detalle, cantidad))
     if con_pago:
-        cx.execute("""INSERT INTO bc.venta_pago (venta_id, metodo, modalidad_tarjeta, monto, importe_recibido,
+        cx.execute("""INSERT INTO bc.venta_pago (venta_id, metodo, modalidad_tarjeta, total_cobrado, importe_recibido,
                       referencia_externa, verificado_por) VALUES (%s, %s, %s, %s, %s, %s, %s)""",
                    (venta, metodo, modalidad, monto or total, recibido if metodo == "EFECTIVO" else None,
                     referencia, cajero))
     return venta
 
 
-def registrar_movimiento(cx, codigo, tipo, cantidad, referencia=None, motivo=None, costo=None):
-    cx.execute("""INSERT INTO bc.movimiento_inventario
-                  (producto_id, usuario_id, tipo, cantidad, referencia, motivo_merma, costo_unitario)
-                  VALUES (%s, %s, %s, %s, %s, %s, %s)""",
+def registrar_movimiento(cx, codigo, tipo, cantidad, referencia=None, motivo=None, costo=None, comprobante=None):
+    return cx.execute("""INSERT INTO bc.movimiento_inventario
+                  (producto_id, usuario_id, tipo, cantidad, referencia, motivo_merma, costo_unitario, tipo_comprobante)
+                  VALUES (%s, %s, %s, %s, %s, %s, %s, %s) RETURNING numero_entrada""",
                (id_producto(cx, codigo), id_usuario(cx, "cadionicio@gmail.com"), tipo, cantidad,
-                referencia, motivo, costo))
+                referencia, motivo, costo, comprobante)).fetchone()[0]
 
 
 def stock(cx, codigo):
@@ -132,7 +132,8 @@ CASOS_VALIDOS = [
                                                        modalidad="DEBITO")),
     ("Ganancia sin dato si falta costo", venta_sin_costo),
     ("Merma valorizada al costo", merma_valida),
-    ("Reposición con referencia", lambda cx: registrar_movimiento(cx, "P0006", "ENTRADA", 10, "Factura F001-123")),
+    ("Reposición con N.º de entrada automático", lambda cx: [registrar_movimiento(cx, "P0006", "ENTRADA", 10, "F001-123", comprobante="FACTURA"),
+                                                             registrar_movimiento(cx, "P0006", "ENTRADA", 5, comprobante="SIN_COMPROBANTE")]),
     ("Producto nuevo nace con saldo", producto_nuevo_con_saldo),
     ("actualizado_en por trigger", actualizado_en_automatico),
     ("Código de producto correlativo", codigo_automatico),
@@ -144,10 +145,12 @@ CASOS_INVALIDOS = [
     ("Merma mayor al stock", lambda cx: registrar_movimiento(cx, "P0006", "MERMA", 9, motivo="DANADO")),
     ("UPDATE directo del saldo", lambda cx: cx.execute("UPDATE bc.inventario_saldo SET cantidad = 999")),
     ("DELETE directo del saldo", lambda cx: cx.execute("DELETE FROM bc.inventario_saldo")),
-    ("Reposición sin referencia", lambda cx: registrar_movimiento(cx, "P0001", "ENTRADA", 5)),
+    ("Reposición sin tipo de comprobante", lambda cx: registrar_movimiento(cx, "P0001", "ENTRADA", 5, "F001-1")),
+    ("Reposición «sin comprobante» con número", lambda cx: registrar_movimiento(cx, "P0001", "ENTRADA", 5, "F001-1", comprobante="SIN_COMPROBANTE")),
+    ("Tipo de comprobante en una merma", lambda cx: registrar_movimiento(cx, "P0001", "MERMA", 1, motivo="DANADO", comprobante="BOLETA")),
     ("Merma sin motivo", lambda cx: registrar_movimiento(cx, "P0001", "MERMA", 1)),
     ("Merma OTRO sin observación", lambda cx: registrar_movimiento(cx, "P0001", "MERMA", 1, motivo="OTRO")),
-    ("Costo en movimiento no merma", lambda cx: registrar_movimiento(cx, "P0001", "ENTRADA", 1, "F-1", costo=1)),
+    ("Costo en movimiento no merma", lambda cx: registrar_movimiento(cx, "P0001", "ENTRADA", 1, "F-1", costo=1, comprobante="FACTURA")),
     ("Segundo ALTA del producto", lambda cx: registrar_movimiento(cx, "P0001", "ALTA", 1)),
     # Venta completa al COMMIT
     ("Venta sin pago", lambda cx: registrar_venta(cx, [("P0001", 1)], con_pago=False)),
@@ -166,7 +169,7 @@ CASOS_INVALIDOS = [
     # Inmutabilidad
     ("Editar venta", lambda cx: (registrar_venta(cx, [("P0001", 1)]), cx.execute("UPDATE bc.venta SET cliente_id = NULL"))),
     ("Borrar detalle", lambda cx: (registrar_venta(cx, [("P0001", 1)]), cx.execute("DELETE FROM bc.detalle_venta"))),
-    ("Editar pago", lambda cx: (registrar_venta(cx, [("P0001", 1)]), cx.execute("UPDATE bc.venta_pago SET monto = 1"))),
+    ("Editar pago", lambda cx: (registrar_venta(cx, [("P0001", 1)]), cx.execute("UPDATE bc.venta_pago SET total_cobrado = 1"))),
     ("Borrar movimiento", lambda cx: cx.execute("DELETE FROM bc.movimiento_inventario")),
     # Catálogo, clientes y usuarios
     ("Código de producto inválido", lambda cx: cx.execute("INSERT INTO bc.producto (codigo, nombre, precio) VALUES ('a b', 'X', 1)")),

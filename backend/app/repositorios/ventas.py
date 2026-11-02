@@ -42,11 +42,11 @@ def insertar_detalle(cx: Connection, venta_id: int, producto: dict, cantidad: in
                       ).fetchone()["detalle_id"]
 
 
-def insertar_pago(cx: Connection, venta_id: int, pago: dict, monto, usuario_id: int) -> None:
-    cx.execute("""INSERT INTO bc.venta_pago (venta_id, metodo, modalidad_tarjeta, monto, importe_recibido,
+def insertar_pago(cx: Connection, venta_id: int, pago: dict, total_cobrado, usuario_id: int) -> None:
+    cx.execute("""INSERT INTO bc.venta_pago (venta_id, metodo, modalidad_tarjeta, total_cobrado, importe_recibido,
                                              referencia_externa, verificado_por)
                   VALUES (%s, %s, %s, %s, %s, %s, %s)""",
-               (venta_id, pago["metodo"], pago["modalidad_tarjeta"], monto, pago["importe_recibido"],
+               (venta_id, pago["metodo"], pago["modalidad_tarjeta"], total_cobrado, pago["importe_recibido"],
                 pago["referencia_externa"], usuario_id))
 
 

@@ -25,7 +25,7 @@ def test_t03_venta_correcta_registra_todo_en_una_transaccion(cliente_http, cajer
     assert (cuerpo["estado"], cuerpo["total"], cuerpo["vuelto"], cuerpo["repetida"]) == ("CONFIRMADA", 7.0, 13.0, False)
     assert stock(sql, 1) == 46
     # Venta, detalle con precio histórico, salida trazable y pago por el total (no por lo recibido).
-    assert sql("SELECT d.precio_unitario, m.tipo, m.cantidad, p.monto, p.importe_recibido FROM bc.detalle_venta d "
+    assert sql("SELECT d.precio_unitario, m.tipo, m.cantidad, p.total_cobrado, p.importe_recibido FROM bc.detalle_venta d "
                "JOIN bc.movimiento_inventario m USING (detalle_id) JOIN bc.venta_pago p USING (venta_id) "
                "WHERE d.venta_id = %s", cuerpo["venta_id"]) == [
         (Decimal("3.50"), "SALIDA_VENTA", 2, Decimal("7.00"), Decimal("20.00"))]
@@ -135,5 +135,5 @@ def test_rnf02_ventas_simultaneas_no_dejan_stock_negativo(cliente_http, sql):
 def test_conciliacion_saldo_igual_a_libro_tras_operaciones(cliente_http, cajero, propietario, sql):
     cliente_http.post(API, headers=cajero, json=venta([(1, 3), (4, 2)]))
     cliente_http.post("/api/v1/inventario/4/mermas", headers=propietario, json={"cantidad": 1, "motivo": "VENCIDO"})
-    cliente_http.post("/api/v1/inventario/6/entradas", headers=propietario, json={"cantidad": 10, "referencia": "F001-9"})
+    cliente_http.post("/api/v1/inventario/6/entradas", headers=propietario, json={"cantidad": 10, "tipo_comprobante": "FACTURA", "numero_comprobante": "F001-9"})
     assert sql("SELECT COUNT(*) FROM bc.v_descuadre_inventario")[0][0] == 0

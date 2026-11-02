@@ -55,7 +55,7 @@ erDiagram
           bigint venta_id FK, UK
           varchar metodo "EFECTIVO|YAPE|PLIN|TARJETA"
           varchar modalidad_tarjeta "DEBITO|CREDITO"
-          numeric monto "= total"
+          numeric total_cobrado "= total"
           numeric importe_recibido "solo efectivo"
           varchar referencia_externa "solo electrónicos"
           bigint verificado_por FK }
@@ -65,6 +65,8 @@ erDiagram
           bigint detalle_id FK, UK
           varchar tipo "ALTA|ENTRADA|SALIDA_VENTA|MERMA"
           int cantidad "> 0"
+          varchar numero_entrada UK "E-00001, solo ENTRADA"
+          varchar tipo_comprobante "BOLETA|FACTURA|GUIA|SIN_COMPROBANTE"
           varchar motivo_merma "VENCIDO|DANADO|FALTANTE|OTRO"
           numeric costo_unitario "solo MERMA"
           varchar referencia }

@@ -6,13 +6,13 @@
 
 | Archivo | Qué hace | Cuándo se ejecuta |
 |---|---|---|
-| `01_esquema.sql` | Crea el esquema `bc`: 11 tablas, una secuencia, restricciones, índices, 9 funciones/triggers, 6 vistas y los 2 roles. Todo en una transacción: si una línea falla, no queda nada a medias. | Una vez, sobre una base vacía (local o Neon). |
+| `01_esquema.sql` | Crea el esquema `bc`: 11 tablas, dos secuencias, restricciones, índices, 10 funciones/triggers, 6 vistas y los 2 roles. Todo en una transacción: si una línea falla, no queda nada a medias. | Una vez, sobre una base vacía (local o Neon). |
 | `02_datos_iniciales.sql` | Crea los 2 usuarios de demostración (hash bcrypt real) y 8 productos con su stock de apertura registrado como movimiento `ALTA`. | Después de `01`. |
-| `03_pruebas_esquema.py` | 45 casos automáticos: 9 operaciones válidas que deben aceptarse, 35 inválidas que deben rechazarse y la conciliación del stock. Cada caso se revierte; la base queda intacta. | Después de `02`, y cada vez que se cambie el esquema. |
+| `03_pruebas_esquema.py` | 47 casos automáticos: 9 operaciones válidas que deben aceptarse, 37 inválidas que deben rechazarse y la conciliación del stock. Cada caso se revierte; la base queda intacta. | Después de `02`, y cada vez que se cambie el esquema. |
 | `04_modelo_er.mmd` / `.png` | Diagrama entidad-relación (fuente Mermaid e imagen). | Se regenera la imagen si cambia el esquema. |
 | `DICCIONARIO_DE_DATOS.md` | Este documento. | — |
 
-**Orden de instalación:** `01_esquema.sql` → `02_datos_iniciales.sql` → `python 03_pruebas_esquema.py` (debe terminar en `45/45`).
+**Orden de instalación:** `01_esquema.sql` → `02_datos_iniciales.sql` → `python 03_pruebas_esquema.py` (debe terminar en `47/47`).
 
 ## Convenciones
 
@@ -137,9 +137,9 @@
 | `venta_id` | BIGINT único → `venta` | No | Venta cobrada; **un pago por venta**. | El cobro queda ligado a su venta. | `123` |
 | `metodo` | VARCHAR(8) | No | `EFECTIVO`, `YAPE`, `PLIN` o `TARJETA`. | Reportes por medio de pago. | `YAPE` |
 | `modalidad_tarjeta` | VARCHAR(7) | Sí | `DEBITO` o `CREDITO`; obligatoria solo si es `TARJETA`. | Distinguir comisiones y conciliar con el POS. | `DEBITO` |
-| `monto` | NUMERIC(14,2) | No | Igual al total de la venta (lo verifica un trigger al confirmar). | El ingreso real. El vuelto **no** es ingreso (RN-05). | `13.10` |
-| `importe_recibido` | NUMERIC(14,2) | Sí | Solo efectivo: lo que entregó el cliente, mayor o igual que `monto`. | Calcular el vuelto (`importe_recibido − monto`). | `20.00` |
-| `referencia_externa` | VARCHAR(80) | Sí | Solo Yape, Plin o tarjeta: número de operación (4 a 80 caracteres). Único por método. | Evidencia de un cobro verificado. Una misma operación no puede pagar dos ventas (RN-06). | `YP-48213377` |
+| `total_cobrado` | NUMERIC(14,2) | No | Lo cobrado por la venta: igual a su total (lo verifica un trigger al confirmar). | El ingreso real. El vuelto **no** es ingreso (RN-05). El sistema no lleva saldo de caja (cierre de caja fuera de alcance). | `13.10` |
+| `importe_recibido` | NUMERIC(14,2) | Sí | Solo efectivo: lo que entregó el cliente, mayor o igual que `total_cobrado`. | Calcular el vuelto (`importe_recibido − total_cobrado`). | `20.00` |
+| `referencia_externa` | VARCHAR(80) | Sí | Solo Yape, Plin o tarjeta: **N.º de operación** de la constancia de Yape/Plin o del voucher del POS (4 a 80 caracteres). Único por método. | Evidencia de un cobro verificado. Una misma operación no puede pagar dos ventas (RN-06). | `YP-48213377` |
 | `verificado_por` | BIGINT → `usuario` | No | Quién confirmó el cobro: contó el efectivo o vio la operación en su app o POS. | Responsabilidad sobre cada cobro. | `2` |
 | `registrado_en` | TIMESTAMPTZ | No (NOW) | Momento del cobro. | Auditoría. | — |
 
@@ -164,13 +164,15 @@
 | `cantidad` | INTEGER | No | Unidades, siempre positivas; el signo lo da el tipo. | Evita errores de signo. | `3` |
 | `motivo_merma` | VARCHAR(8) | Sí | Solo `MERMA` y ahí es obligatorio: `VENCIDO`, `DANADO`, `FALTANTE` u `OTRO`. | Agrupar las pérdidas por causa para atacarlas. | `VENCIDO` |
 | `costo_unitario` | NUMERIC(12,2) | Sí | Solo `MERMA`: copia del costo del producto al darlo de baja. | Valorizar la pérdida en soles. | `3.90` |
-| `referencia` | VARCHAR(120) | Sí | En `ENTRADA` es obligatoria (comprobante de compra). En `MERMA` es la observación: obligatoria solo si el motivo es `OTRO`. En `ALTA` y `SALIDA_VENTA` va vacía. | Evidencia documental. | `Factura F001-123` / `Lote vencido 30/10` |
+| `numero_entrada` | VARCHAR(12) único | Sí | Solo `ENTRADA`: **N.º de entrada correlativo asignado por la BD** (trigger `tr_numero_entrada`, secuencia `entrada_numero_seq`). | Identificar cada reposición sin depender de la numeración del proveedor. | `E-00001` |
+| `tipo_comprobante` | VARCHAR(16) | Sí | Solo `ENTRADA` y obligatorio ahí: `BOLETA`, `FACTURA`, `GUIA` o `SIN_COMPROBANTE`. | Saber qué documento respalda la compra. | `FACTURA` |
+| `referencia` | VARCHAR(120) | Sí | En `ENTRADA`: número del comprobante del proveedor (**opcional**; vacío si es `SIN_COMPROBANTE`). En `MERMA`: observación, obligatoria solo si el motivo es `OTRO`. En `ALTA` y `SALIDA_VENTA` va vacía. | Evidencia documental. | `F001-123` / `Lote vencido 30/10` |
 | `registrada_en` | TIMESTAMPTZ | No (NOW) | Momento del movimiento. | Reconstruir el stock en cualquier fecha. | — |
 
 | Tipo | Efecto en stock | Quién lo genera | Reglas |
 |---|---|---|---|
 | `ALTA` | Suma | Al crear un producto con stock inicial | Uno solo por producto, sin referencia. |
-| `ENTRADA` | Suma | Propietario (reposición) | Referencia obligatoria. |
+| `ENTRADA` | Suma | Propietario (reposición) | N.º de entrada automático (E-00001) y tipo de comprobante obligatorios; número del proveedor opcional. |
 | `SALIDA_VENTA` | Resta | Al confirmar una venta | Ligado a su línea de venta, con la misma cantidad. |
 | `MERMA` | Resta | Propietario | Motivo obligatorio. Observación obligatoria si el motivo es `OTRO`. Se copia el costo. |
 
@@ -202,6 +204,7 @@
 
 | Nombre | Se dispara | Qué garantiza |
 |---|---|---|
+| `tr_numero_entrada` | Antes de insertar un movimiento | Asigna el N.º de entrada correlativo (E-00001, E-00002…) a cada reposición. |
 | `siguiente_codigo_producto()` | Valor por defecto de `producto.codigo` | Correlativo P0001, P0002… sin truncar al pasar de 9999. |
 | `variacion_stock(tipo, cantidad)` | La usan triggers y vistas | Fuente única del signo: `SALIDA_VENTA` y `MERMA` restan; `ALTA` y `ENTRADA` suman. |
 | `tr_producto_saldo` | Después de insertar un producto | Crea su saldo en 0. |
@@ -210,7 +213,7 @@
 | `tr_aplicar_movimiento` | Después de insertar un movimiento | Ajusta el saldo en la misma transacción. Si quedaría negativo, aborta todo. |
 | `tr_proteger_saldo` | Antes de cualquier cambio en `inventario_saldo` | Rechaza cambios directos; solo los acepta desde los triggers anteriores. |
 | `tr_*_inmutable` (4) | Antes de `UPDATE` o `DELETE` en venta, detalle, pago o movimiento | El historial no se altera; los errores se corrigen con operaciones compensatorias. |
-| `ct_venta_completa`, `ct_detalle_completo`, `ct_pago_completo` | **Al confirmar (COMMIT)** la transacción | Cada venta tiene al menos una línea, una salida de inventario por línea y exactamente un pago con monto igual al total. Si no, se revierte toda la venta. |
+| `ct_venta_completa`, `ct_detalle_completo`, `ct_pago_completo` | **Al confirmar (COMMIT)** la transacción | Cada venta tiene al menos una línea, una salida de inventario por línea y exactamente un pago con total cobrado igual al total. Si no, se revierte toda la venta. |
 
 ## 12. Vistas (consultas listas para la API)
 
@@ -244,7 +247,7 @@
 | RN-02 venta con líneas, sin duplicados | `uq_detalle_venta_producto` + `ct_venta_completa`. |
 | RN-03 stock suficiente | `ck_saldo_no_negativo` + bloqueo `FOR UPDATE` en el servicio. |
 | RN-04 precio del servidor e histórico | `detalle_venta.precio_unitario` copiado por la API desde `producto`. |
-| RN-05 efectivo ≥ total, vuelto no es ingreso | `ck_pago_evidencia` + `monto = total`. |
+| RN-05 efectivo ≥ total, vuelto no es ingreso | `ck_pago_evidencia` + `total_cobrado = total`. |
 | RN-06 pago electrónico verificado, sin datos de tarjeta | `ck_pago_evidencia`, `uq_pago_referencia`, `verificado_por`. |
 | RN-07 idempotencia | `clave_idempotencia` única + `solicitud_firma`. |
 | RN-08 reportes por `[desde, hasta)` | `reporte_exportacion` + consultas de la API sobre las vistas. |

@@ -18,6 +18,7 @@ Cantidad = Annotated[int, Field(gt=0, le=100_000)]
 MotivoMerma = Literal["VENCIDO", "DANADO", "FALTANTE", "OTRO"]
 MetodoPago = Literal["EFECTIVO", "YAPE", "PLIN", "TARJETA"]
 TipoDocumento = Literal["NINGUNO", "DNI", "RUC", "CE"]
+TipoComprobante = Literal["BOLETA", "FACTURA", "GUIA", "SIN_COMPROBANTE"]
 Periodo = Literal["DIARIO", "SEMANAL", "MENSUAL", "BIMESTRAL", "TRIMESTRAL", "SEMESTRAL", "ANUAL",
                   "TODO", "PERSONALIZADO"]
 
@@ -66,8 +67,16 @@ class ProductoEditar(Entrada):
 
 
 class EntradaInventario(Entrada):
+    """El N.º de entrada (E-00001) lo asigna la BD; el número del comprobante del proveedor es opcional."""
     cantidad: Cantidad
-    referencia: Texto(120)  # comprobante obligatorio: cada reposición debe ser trazable
+    tipo_comprobante: TipoComprobante
+    numero_comprobante: Texto(120) | None = None
+
+    @model_validator(mode="after")
+    def _sin_numero_si_no_hay_comprobante(self):
+        if self.tipo_comprobante == "SIN_COMPROBANTE" and self.numero_comprobante:
+            raise ValueError("Sin comprobante no debe enviarse número de comprobante")
+        return self
 
 
 class MermaInventario(Entrada):

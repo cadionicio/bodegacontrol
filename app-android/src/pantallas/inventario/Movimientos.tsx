@@ -7,14 +7,14 @@ import type { Movimiento } from '../../api/tipos';
 import { Aviso, Cargando, ImagenProducto, Selector } from '../../componentes/controles';
 import { Pantalla } from '../../componentes/estructura';
 import { useSesion } from '../../estado/sesion';
-import { NOMBRE_MOTIVO, folioVenta, formatoFecha, formatoHora } from '../../utilidades/formato';
+import { NOMBRE_COMPROBANTE, NOMBRE_MOTIVO, folioVenta, formatoFecha, formatoHora } from '../../utilidades/formato';
 import { useCarga } from '../../utilidades/useCarga';
 
 const TIPO: Record<Movimiento['tipo'], string> = { ALTA: 'Entrada', ENTRADA: 'Entrada', SALIDA_VENTA: 'Salida', MERMA: 'Merma' };
 
 function descripcion(m: Movimiento) {
   if (m.tipo === 'ALTA') return 'Motivo: Stock inicial';
-  if (m.tipo === 'ENTRADA') return `Reposición · ${m.referencia}`;
+  if (m.tipo === 'ENTRADA') return `Entrada ${m.numero_entrada} · ${NOMBRE_COMPROBANTE[m.tipo_comprobante!]}${m.referencia ? ` ${m.referencia}` : ''}`;
   if (m.tipo === 'MERMA') return `Merma: ${NOMBRE_MOTIVO[m.motivo_merma!]}${m.referencia ? ` · ${m.referencia}` : ''}`;
   return `Venta ${folioVenta(m.venta_id!)}`;
 }

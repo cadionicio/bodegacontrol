@@ -116,7 +116,8 @@ CREATE TABLE venta_pago (
     venta_id           BIGINT NOT NULL REFERENCES venta ON DELETE RESTRICT,
     metodo             VARCHAR(8) NOT NULL CHECK (metodo IN ('EFECTIVO', 'YAPE', 'PLIN', 'TARJETA')),
     modalidad_tarjeta  VARCHAR(7),
-    monto              NUMERIC(14,2) NOT NULL CHECK (monto > 0),  -- = total; el vuelto no es ingreso
+    -- Lo cobrado por la venta (= total). El vuelto no es ingreso y el sistema no lleva saldo de caja.
+    total_cobrado      NUMERIC(14,2) NOT NULL CHECK (total_cobrado > 0),
     importe_recibido   NUMERIC(14,2),
     referencia_externa VARCHAR(80),
     verificado_por     BIGINT NOT NULL REFERENCES usuario ON DELETE RESTRICT,
@@ -125,14 +126,17 @@ CREATE TABLE venta_pago (
     CONSTRAINT ck_pago_modalidad CHECK (COALESCE(
         (metodo = 'TARJETA' AND modalidad_tarjeta IN ('DEBITO', 'CREDITO'))
         OR (metodo <> 'TARJETA' AND modalidad_tarjeta IS NULL), FALSE)),
-    -- Efectivo exige importe recibido ≥ monto (RN-05); medios electrónicos exigen referencia verificada.
+    -- Efectivo exige importe recibido ≥ total cobrado (RN-05); medios electrónicos exigen referencia verificada.
     CONSTRAINT ck_pago_evidencia CHECK (COALESCE(
-        (metodo = 'EFECTIVO' AND importe_recibido >= monto AND referencia_externa IS NULL)
+        (metodo = 'EFECTIVO' AND importe_recibido >= total_cobrado AND referencia_externa IS NULL)
         OR (metodo <> 'EFECTIVO' AND importe_recibido IS NULL
             AND LENGTH(BTRIM(referencia_externa)) BETWEEN 4 AND 80), FALSE))
 );
 CREATE UNIQUE INDEX uq_pago_referencia ON venta_pago (metodo, referencia_externa)
     WHERE referencia_externa IS NOT NULL;  -- una operación Yape/Plin/POS no paga dos ventas
+
+-- Correlativo propio de cada reposición (E-00001…): el número del proveedor no lo controla la bodega.
+CREATE SEQUENCE entrada_numero_seq;
 
 -- Libro mayor append-only: única vía para cambiar el stock.
 CREATE TABLE movimiento_inventario (
@@ -145,7 +149,10 @@ CREATE TABLE movimiento_inventario (
     motivo_merma   VARCHAR(8) CHECK (motivo_merma IN ('VENCIDO', 'DANADO', 'FALTANTE', 'OTRO')),
     -- Costo congelado de la merma: mide la pérdida en soles aunque el costo cambie después.
     costo_unitario NUMERIC(12,2) CHECK (costo_unitario >= 0),
-    referencia     VARCHAR(120),  -- documento de reposición u observación de la merma
+    -- Solo ENTRADA: N.º de entrada asignado por trigger y tipo del comprobante del proveedor.
+    numero_entrada   VARCHAR(12) UNIQUE,
+    tipo_comprobante VARCHAR(16) CHECK (tipo_comprobante IN ('BOLETA', 'FACTURA', 'GUIA', 'SIN_COMPROBANTE')),
+    referencia     VARCHAR(120),  -- N.º del comprobante del proveedor (opcional) u observación de la merma
     registrada_en  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     -- La FK compuesta impide asociar una salida a un detalle de otro producto.
     CONSTRAINT fk_movimiento_detalle FOREIGN KEY (detalle_id, producto_id)
@@ -153,11 +160,17 @@ CREATE TABLE movimiento_inventario (
     CONSTRAINT ck_movimiento_origen CHECK (COALESCE(
            (tipo = 'SALIDA_VENTA' AND detalle_id IS NOT NULL AND referencia IS NULL AND motivo_merma IS NULL)
         OR (tipo = 'ALTA'    AND detalle_id IS NULL AND referencia IS NULL AND motivo_merma IS NULL)
-        OR (tipo = 'ENTRADA' AND detalle_id IS NULL AND LENGTH(BTRIM(referencia)) > 0 AND motivo_merma IS NULL)
+        -- Reposición: N.º de entrada y tipo obligatorios; el número del proveedor es opcional y no existe
+        -- si no hay comprobante.
+        OR (tipo = 'ENTRADA' AND detalle_id IS NULL AND motivo_merma IS NULL
+            AND numero_entrada IS NOT NULL AND tipo_comprobante IS NOT NULL
+            AND (tipo_comprobante <> 'SIN_COMPROBANTE' OR referencia IS NULL)
+            AND (referencia IS NULL OR LENGTH(BTRIM(referencia)) > 0))
         -- Merma básica: motivo obligatorio; la observación solo es obligatoria si el motivo es OTRO.
         OR (tipo = 'MERMA'   AND detalle_id IS NULL AND motivo_merma IS NOT NULL
             AND (motivo_merma <> 'OTRO' OR LENGTH(BTRIM(referencia)) > 0)), FALSE)),
-    CONSTRAINT ck_movimiento_costo CHECK (tipo = 'MERMA' OR costo_unitario IS NULL)
+    CONSTRAINT ck_movimiento_costo CHECK (tipo = 'MERMA' OR costo_unitario IS NULL),
+    CONSTRAINT ck_movimiento_entrada CHECK (tipo = 'ENTRADA' OR (numero_entrada IS NULL AND tipo_comprobante IS NULL))
 );
 CREATE UNIQUE INDEX uq_movimiento_alta ON movimiento_inventario (producto_id) WHERE tipo = 'ALTA';
 
@@ -227,6 +240,19 @@ END $$;
 CREATE TRIGGER tr_producto_actualizado BEFORE UPDATE ON producto
     FOR EACH ROW EXECUTE FUNCTION marcar_actualizacion();
 
+-- El N.º de entrada lo asigna la BD: correlativo sin huecos de concurrencia y sin depender del cliente.
+CREATE FUNCTION asignar_numero_entrada() RETURNS TRIGGER LANGUAGE plpgsql AS $$
+DECLARE n BIGINT;
+BEGIN
+    IF NEW.tipo = 'ENTRADA' THEN
+        n := NEXTVAL('bc.entrada_numero_seq');
+        NEW.numero_entrada := 'E-' || LPAD(n::TEXT, GREATEST(5, LENGTH(n::TEXT)), '0');
+    END IF;
+    RETURN NEW;
+END $$;
+CREATE TRIGGER tr_numero_entrada BEFORE INSERT ON movimiento_inventario
+    FOR EACH ROW EXECUTE FUNCTION asignar_numero_entrada();
+
 -- Defensa en profundidad: la salida de inventario debe coincidir con la cantidad vendida.
 CREATE FUNCTION validar_cantidad_salida() RETURNS TRIGGER LANGUAGE plpgsql AS $$
 BEGIN
@@ -265,14 +291,14 @@ CREATE TRIGGER tr_proteger_saldo BEFORE INSERT OR UPDATE OR DELETE ON inventario
 -- Verificación al COMMIT: venta con ≥1 línea, exactamente un pago igual al total y una
 -- salida de inventario por línea. Se difiere porque cabecera, detalle y pago se insertan por separado.
 CREATE FUNCTION validar_venta_completa() RETURNS TRIGGER LANGUAGE plpgsql AS $$
-DECLARE v_lineas INTEGER; v_total NUMERIC; v_salidas INTEGER; v_pagos INTEGER; v_monto NUMERIC;
+DECLARE v_lineas INTEGER; v_total NUMERIC; v_salidas INTEGER; v_pagos INTEGER; v_cobrado NUMERIC;
 BEGIN
     SELECT COUNT(*), SUM(d.cantidad * d.precio_unitario), COUNT(m.movimiento_id)
       INTO v_lineas, v_total, v_salidas
       FROM bc.detalle_venta d LEFT JOIN bc.movimiento_inventario m ON m.detalle_id = d.detalle_id
      WHERE d.venta_id = NEW.venta_id;
-    SELECT COUNT(*), MAX(monto) INTO v_pagos, v_monto FROM bc.venta_pago WHERE venta_id = NEW.venta_id;
-    IF v_lineas = 0 OR v_salidas <> v_lineas OR v_pagos <> 1 OR v_monto <> v_total THEN
+    SELECT COUNT(*), MAX(total_cobrado) INTO v_pagos, v_cobrado FROM bc.venta_pago WHERE venta_id = NEW.venta_id;
+    IF v_lineas = 0 OR v_salidas <> v_lineas OR v_pagos <> 1 OR v_cobrado <> v_total THEN
         RAISE EXCEPTION 'Venta % incompleta o descuadrada', NEW.venta_id USING ERRCODE = '23514';
     END IF;
     RETURN NULL;
@@ -298,7 +324,7 @@ SELECT v.venta_id, v.registrada_en, v.usuario_id, u.nombre AS cajero, v.cliente_
        CASE WHEN BOOL_AND(d.costo_unitario IS NOT NULL)
             THEN SUM(d.cantidad * (d.precio_unitario - d.costo_unitario))::NUMERIC(14,2) END AS ganancia,
        p.metodo, p.modalidad_tarjeta, p.importe_recibido, p.referencia_externa,
-       (p.importe_recibido - p.monto)::NUMERIC(14,2)       AS vuelto
+       (p.importe_recibido - p.total_cobrado)::NUMERIC(14,2) AS vuelto
 FROM venta v
 JOIN usuario u       ON u.usuario_id = v.usuario_id
 JOIN detalle_venta d ON d.venta_id = v.venta_id
@@ -342,7 +368,7 @@ SELECT m.movimiento_id, m.producto_id, p.codigo, p.nombre, m.registrada_en, m.ti
        m.cantidad, variacion_stock(m.tipo, m.cantidad) AS variacion,
        SUM(variacion_stock(m.tipo, m.cantidad))
            OVER (PARTITION BY m.producto_id ORDER BY m.registrada_en, m.movimiento_id) AS saldo_reconstruido,
-       u.nombre AS operador, d.venta_id, m.referencia
+       u.nombre AS operador, d.venta_id, m.numero_entrada, m.tipo_comprobante, m.referencia
 FROM movimiento_inventario m
 JOIN producto p           ON p.producto_id = m.producto_id
 JOIN usuario u            ON u.usuario_id = m.usuario_id

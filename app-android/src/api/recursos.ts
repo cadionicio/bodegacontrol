@@ -1,8 +1,8 @@
 /** Un método por endpoint propio: las pantallas nunca construyen URLs a mano. */
 import { solicitar, urlApi } from './cliente';
 import type {
-  Cliente, DatosProducto, DetalleInventario, Exportacion, MotivoMerma, Periodo, Producto, ReporteJson,
-  ResumenPeriodo, Sesion, Usuario, Venta, VentaResumen, VentaSolicitud,
+  Cliente, DatosProducto, DetalleInventario, DetalleInventarioConMovimiento, Exportacion, MotivoMerma, Periodo, Producto, ReporteJson,
+  ResumenPeriodo, Sesion, TipoComprobante, Usuario, Venta, VentaResumen, VentaSolicitud,
 } from './tipos';
 
 export const api = {
@@ -30,8 +30,9 @@ export const api = {
 
   inventario: {
     detalle: (id: number, limite = 100) => solicitar<DetalleInventario>('GET', `/inventario/${id}`, { consulta: { limite } }),
-    registrarEntrada: (id: number, cantidad: number, referencia: string) =>
-      solicitar<DetalleInventario>('POST', `/inventario/${id}/entradas`, { cuerpo: { cantidad, referencia } }),
+    registrarEntrada: (id: number, cantidad: number, tipo_comprobante: TipoComprobante, numero_comprobante?: string) =>
+      solicitar<DetalleInventarioConMovimiento>('POST', `/inventario/${id}/entradas`,
+        { cuerpo: { cantidad, tipo_comprobante, ...(numero_comprobante ? { numero_comprobante } : {}) } }),
     registrarMerma: (id: number, cantidad: number, motivo: MotivoMerma, observacion?: string) =>
       solicitar<DetalleInventario>('POST', `/inventario/${id}/mermas`,
         { cuerpo: { cantidad, motivo, ...(observacion ? { observacion } : {}) } }),
