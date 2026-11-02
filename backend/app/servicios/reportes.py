@@ -8,7 +8,7 @@ from app.configuracion import configuracion
 from app.repositorios import reportes as repo
 from app.seguridad import UsuarioSesion
 from app.servicios.documentos import Columna, generar_csv, generar_pdf
-from app.servicios.periodos import intervalo
+from app.servicios.periodos import hoy_local, intervalo
 
 
 @dataclass(frozen=True)
@@ -46,9 +46,13 @@ def _agregados(cx: Connection, desde: datetime, hasta: datetime) -> dict:
 
 def resumen(cx: Connection, periodo: str, fecha: date | None, desde_dia: date | None = None,
             hasta_dia: date | None = None) -> dict:
-    """Tablero de Inicio: ventas, ganancia, medios de pago, más vendidos e indicador de mermas."""
+    """Tablero de Inicio: ventas, ganancia, medios de pago, más vendidos, mermas, catálogo y últimos 7 días."""
     desde, hasta = intervalo(periodo, fecha, desde_dia, hasta_dia)
-    return {"intervalo": _describir(periodo, desde, hasta), **_agregados(cx, desde, hasta)}
+    ultimo_dia = fecha or hoy_local()
+    return {"intervalo": _describir(periodo, desde, hasta), **_agregados(cx, desde, hasta),
+            "catalogo": repo.estado_catalogo(cx),
+            "ultimos_7_dias": repo.serie_diaria(cx, ultimo_dia - timedelta(days=6), ultimo_dia,
+                                                configuracion.zona_horaria.key)}
 
 
 def _resumen_pdf(tipo: str, datos: dict) -> list[tuple[str, str]]:

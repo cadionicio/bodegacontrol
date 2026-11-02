@@ -26,8 +26,6 @@ def registrar_entrada(cx: Connection, usuario: UsuarioSesion, producto_id: int, 
     with cx.transaction():
         if not _bloquear_producto(cx, producto_id)["activo"]:
             raise ErrorNegocio(422, "PRODUCTO_INACTIVO", "Reactive el producto antes de reponerlo")
-        if datos.nuevo_costo is not None:
-            repo_productos.actualizar(cx, producto_id, {"costo": datos.nuevo_costo})
         movimiento = repo.registrar_movimiento(cx, producto_id, usuario.usuario_id, "ENTRADA", datos.cantidad,
                                                referencia=datos.referencia)
     return {"movimiento": movimiento, **detalle(cx, usuario, producto_id, 10)}

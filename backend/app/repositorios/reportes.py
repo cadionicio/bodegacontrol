@@ -65,6 +65,25 @@ def filas_mermas(cx: Connection, desde: datetime, hasta: datetime) -> list[dict]
         {"desde": desde, "hasta": hasta}).fetchall()
 
 
+def serie_diaria(cx: Connection, primer_dia, ultimo_dia, zona: str) -> list[dict]:
+    """Un punto por día local, incluidos los días sin ventas (generate_series evita huecos en el gráfico)."""
+    return cx.execute("""
+        WITH dias AS (SELECT generate_series(%(primero)s::DATE, %(ultimo)s::DATE, INTERVAL '1 day')::DATE AS fecha),
+             ventas AS (SELECT (registrada_en AT TIME ZONE %(zona)s)::DATE AS fecha, total FROM bc.v_venta_resumen
+                        WHERE registrada_en >= (%(primero)s::DATE::TIMESTAMP AT TIME ZONE %(zona)s)
+                          AND registrada_en < ((%(ultimo)s::DATE + 1)::TIMESTAMP AT TIME ZONE %(zona)s))
+        SELECT d.fecha, COUNT(v.total) AS ventas, COALESCE(SUM(v.total), 0) AS total
+        FROM dias d LEFT JOIN ventas v USING (fecha) GROUP BY d.fecha ORDER BY d.fecha""",
+        {"primero": primer_dia, "ultimo": ultimo_dia, "zona": zona}).fetchall()
+
+
+def estado_catalogo(cx: Connection) -> dict:
+    return cx.execute("""SELECT COUNT(*) FILTER (WHERE activo) AS productos_activos,
+                                COUNT(*) FILTER (WHERE activo AND por_reponer) AS por_reponer,
+                                COALESCE(SUM(stock) FILTER (WHERE activo), 0) AS unidades
+                         FROM bc.v_producto_stock""").fetchone()
+
+
 def registrar_exportacion(cx: Connection, usuario_id: int, tipo: str, formato: str, periodo: str,
                           desde: datetime, hasta: datetime, filas: int) -> None:
     cx.execute("""INSERT INTO bc.reporte_exportacion

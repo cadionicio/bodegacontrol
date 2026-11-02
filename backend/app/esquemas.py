@@ -71,8 +71,7 @@ class ProductoEditar(Entrada):
 
 class EntradaInventario(Entrada):
     cantidad: Cantidad
-    referencia: Texto(120)
-    nuevo_costo: Costo | None = None  # actualiza el costo vigente si la reposición llegó a otro precio
+    referencia: Texto(120)  # comprobante obligatorio: cada reposición debe ser trazable
 
 
 class MermaInventario(Entrada):

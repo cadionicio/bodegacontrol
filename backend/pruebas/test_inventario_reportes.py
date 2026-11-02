@@ -10,12 +10,14 @@ from app.servicios.periodos import intervalo
 API = "/api/v1"
 
 
-def test_reposicion_suma_stock_y_actualiza_costo(cliente_http, propietario, sql):
+def test_reposicion_suma_stock_con_referencia_obligatoria(cliente_http, propietario, sql):
     respuesta = cliente_http.post(f"{API}/inventario/6/entradas", headers=propietario,
-                                  json={"cantidad": 10, "referencia": "Factura F001-123", "nuevo_costo": 3.80})
+                                  json={"cantidad": 10, "referencia": "Factura F001-123"})
     assert respuesta.status_code == 201 and respuesta.json()["producto"]["stock"] == 14
     assert respuesta.json()["producto"]["por_reponer"] is False
-    assert sql("SELECT costo FROM bc.producto WHERE producto_id = 6") == [(Decimal("3.80"),)]
+    assert sql("SELECT referencia FROM bc.movimiento_inventario WHERE tipo = 'ENTRADA'") == [("Factura F001-123",)]
+    sin_referencia = cliente_http.post(f"{API}/inventario/6/entradas", headers=propietario, json={"cantidad": 1})
+    assert sin_referencia.status_code == 400
 
 
 def test_merma_resta_stock_y_congela_el_costo(cliente_http, propietario, sql):
@@ -61,6 +63,9 @@ def test_resumen_del_dia_cuadra_con_sql_e_informa_ventas_sin_costo(cliente_http,
     assert resumen["mas_vendidos"][0]["codigo"] == "P0008"
     # % merma = 3.90 / (costo vendido 8.30 + 3.90) = 31.97 %
     assert (resumen["mermas"]["valor_perdido"], resumen["mermas"]["porcentaje_merma"]) == (3.9, 31.97)
+    assert resumen["catalogo"] == {"productos_activos": 8, "por_reponer": 1, "unidades": 212}  # 226 − 13 vendidas − 1 merma
+    serie = resumen["ultimos_7_dias"]
+    assert len(serie) == 7 and serie[-1]["total"] == 14.2 and sum(d["ventas"] for d in serie[:-1]) == 0
 
 
 def test_t08_exportacion_pdf_y_csv_reales_y_auditadas(cliente_http, propietario, sql):
