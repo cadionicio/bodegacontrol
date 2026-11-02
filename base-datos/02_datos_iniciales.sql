@@ -36,4 +36,7 @@ INSERT INTO movimiento_inventario (producto_id, usuario_id, tipo, cantidad)
 SELECT n.producto_id, (SELECT usuario_id FROM usuario WHERE correo = 'cadionicio@gmail.com'), 'ALTA', d.stock
 FROM nuevos n JOIN datos d USING (codigo)
 WHERE d.stock > 0;
+
+-- Los códigos iniciales se cargaron explícitos: la secuencia continúa desde el mayor (el próximo será P0009).
+SELECT SETVAL('producto_codigo_seq', (SELECT MAX(SUBSTRING(codigo FROM 2)::INTEGER) FROM producto));
 COMMIT;

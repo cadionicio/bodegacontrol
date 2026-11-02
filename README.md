@@ -52,7 +52,7 @@ uvicorn app.main:app --reload --env-file .env
 ## Pruebas
 
 ```bash
-# Integridad del esquema (44 casos) sobre la base cargada
+# Integridad del esquema (45 casos) sobre la base cargada
 DATABASE_URL=postgresql://postgres:clave@localhost/bodega python base-datos/03_pruebas_esquema.py
 
 # API (46 casos, incluye T-01..T-09 del Plan Maestro). ¡La base indicada se BORRA y recrea!

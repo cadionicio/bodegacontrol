@@ -108,6 +108,13 @@ def producto_nuevo_con_saldo(cx):
     return "saldo creado en 0 automáticamente"
 
 
+def codigo_automatico(cx):
+    codigos = [consultar(cx, "INSERT INTO bc.producto (nombre, precio) VALUES (%s, 1) RETURNING codigo", n)[0][0]
+               for n in ("Chicle", "Caramelo")]
+    assert codigos == ["P0009", "P0010"], codigos
+    return f"códigos asignados {codigos}"
+
+
 def actualizado_en_automatico(cx):
     antes = consultar(cx, "SELECT actualizado_en FROM bc.producto WHERE codigo = 'P0001'")[0][0]
     cx.execute("SELECT pg_sleep(0.01)")
@@ -128,6 +135,7 @@ CASOS_VALIDOS = [
     ("Reposición con referencia", lambda cx: registrar_movimiento(cx, "P0006", "ENTRADA", 10, "Factura F001-123")),
     ("Producto nuevo nace con saldo", producto_nuevo_con_saldo),
     ("actualizado_en por trigger", actualizado_en_automatico),
+    ("Código de producto correlativo", codigo_automatico),
 ]
 
 CASOS_INVALIDOS = [

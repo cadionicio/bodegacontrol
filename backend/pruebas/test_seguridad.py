@@ -48,7 +48,7 @@ def test_t07_cajero_no_puede_exportar_reportes(cliente_http, cajero, sql):
 
 def test_t07_cajero_no_puede_crear_productos_ni_registrar_mermas(cliente_http, cajero):
     assert cliente_http.post(f"{API}/productos", headers=cajero,
-                             json={"codigo": "X01", "nombre": "X", "precio": 1}).status_code == 403
+                             json={"nombre": "X", "precio": 1}).status_code == 403
     assert cliente_http.post(f"{API}/inventario/1/mermas", headers=cajero,
                              json={"cantidad": 1, "motivo": "DANADO"}).status_code == 403
 
@@ -59,10 +59,10 @@ def test_cajero_no_recibe_el_costo_de_los_productos(cliente_http, cajero, propie
 
 
 def test_json_mal_formado_devuelve_400_con_campos(cliente_http, propietario):
-    respuesta = cliente_http.post(f"{API}/productos", headers=propietario, json={"codigo": "a b", "precio": 0})
+    respuesta = cliente_http.post(f"{API}/productos", headers=propietario, json={"codigo_barras": "a b", "precio": 0})
     cuerpo = respuesta.json()
     assert respuesta.status_code == 400 and cuerpo["codigo"] == "SOLICITUD_INVALIDA"
-    assert {"codigo", "nombre", "precio"} <= {error["campo"] for error in cuerpo["errores"]}
+    assert {"codigo_barras", "nombre", "precio"} <= {error["campo"] for error in cuerpo["errores"]}
 
 
 def test_cajero_no_recibe_costo_ni_ganancia_de_sus_ventas(cliente_http, cajero):

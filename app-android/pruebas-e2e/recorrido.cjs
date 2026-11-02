@@ -117,7 +117,7 @@ fs.rmSync(DIR, { recursive: true, force: true }); fs.mkdirSync(DIR, { recursive:
   });
   await paso('Historial y detalle', async () => {
     await p.getByRole('link', { name: 'Historial' }).click();
-    await p.getByText('Historial de ventas').waitFor();
+    await p.getByText('Últimas 40 ventas registradas').waitFor();
     await p.getByText('V-00002').waitFor();
     await foto('historial', true);
     await p.getByText('V-00001').click();
@@ -140,23 +140,33 @@ fs.rmSync(DIR, { recursive: true, force: true }); fs.mkdirSync(DIR, { recursive:
     if (!ok) throw new Error('La imagen no cargó');
     await foto('detalle_producto_con_foto');
   });
-  await paso('Nuevo producto con validación y duplicado', async () => {
-    await p.goto(APP + '/#/productos/nuevo');
-    await p.getByText('Completa los datos y valida antes de guardar').waitFor();
-    await p.getByLabel('Código del producto').fill('P0001');
-    await p.getByLabel('Nombre').fill('Azúcar blanca 1 kg');
+  await paso('Nuevo producto: código automático, foto obligatoria y código de barras duplicado', async () => {
+    const llenar = async (nombre, barras) => {
+      await p.goto(APP + '/#/productos/nuevo');
+      await p.getByText('Se asigna automáticamente').waitFor();
+      await p.getByLabel('Nombre').fill(nombre);
+      await p.getByLabel('Precio de venta (S/)').fill('4.80');
+      await p.getByLabel('Stock inicial (unidades)').fill('10');
+      await p.getByLabel(/Código de barras/).fill(barras);
+    };
+    await llenar('Azúcar blanca 1 kg', '7750000000017');
     await p.getByLabel('Precio de venta (S/)').fill('0');
     await boton('Validar y guardar').click();
     await p.getByText('Precio mayor a 0, con hasta 2 decimales').waitFor();
+    await p.getByText('Tome la foto del producto').waitFor();
+    await foto('nuevo_producto_validacion', true);
     await p.getByLabel('Precio de venta (S/)').fill('4.80');
+    await p.locator('input[type=file]').setInputFiles(FOTO);
+    await p.getByRole('img', { name: 'Foto elegida' }).waitFor();
+    await foto('nuevo_producto_con_foto', true);
     await boton('Validar y guardar').click();
-    await p.getByText('Ya existe un producto con este código').waitFor();
-    await foto('nuevo_producto_duplicado', true);
-    await p.getByLabel('Código del producto').fill('P0009');
-    await p.getByLabel('Stock inicial (unidades)').fill('10');
-    await boton('Validar y guardar').click();
-    await p.getByText('Azúcar blanca 1 kg').first().waitFor();
     await p.getByText('Código P0009').waitFor();
+    await p.locator('.miniatura img').waitFor();
+    await llenar('Azúcar blanca 2 kg', '7750000000017');
+    await p.locator('input[type=file]').setInputFiles(FOTO);
+    await boton('Validar y guardar').click();
+    await p.getByText('Este código de barras ya está asignado a otro producto').waitFor();
+    await foto('nuevo_producto_barras_duplicado', true);
   });
   await paso('Inventario y movimientos', async () => {
     await p.getByRole('link', { name: 'Inventario', exact: true }).click();

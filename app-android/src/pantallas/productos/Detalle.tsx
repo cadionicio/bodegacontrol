@@ -4,7 +4,7 @@
  */
 import { Camera, History, LoaderCircle, PackageMinus, PackagePlus, Pencil, Power } from 'lucide-react';
 import { useRef, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { mensajeDeError } from '../../api/cliente';
 import { api } from '../../api/recursos';
 import { Aviso, Cargando, Confirmacion, ImagenProducto } from '../../componentes/controles';
@@ -20,7 +20,8 @@ export function DetalleProducto() {
   const { esPropietario } = useSesion();
   const { datos: p, error, cargando, setDatos } = useCarga(() => api.productos.obtener(id), [id]);
   const [confirmar, setConfirmar] = useState(false);
-  const [aviso, setAviso] = useState<{ tipo: 'exito' | 'error'; texto: string } | null>(null);
+  const avisoInicial = (useLocation().state as { aviso?: string } | null)?.aviso;
+  const [aviso, setAviso] = useState<{ tipo: 'exito' | 'error'; texto: string } | null>(avisoInicial ? { tipo: 'error', texto: avisoInicial } : null);
   const [subiendo, setSubiendo] = useState(false);
   const selectorFoto = useRef<HTMLInputElement>(null);
 

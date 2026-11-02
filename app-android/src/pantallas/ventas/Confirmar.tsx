@@ -113,7 +113,7 @@ export function Confirmar() {
   );
 
   return (
-    <Pantalla titulo="Confirmar venta" volver="/ventas/cobro" volverDeshabilitado={procesando} navegacion={false} pie={pie}>
+    <Pantalla titulo="Confirmar venta" volver="/ventas/cobro" volverDeshabilitado={procesando} pie={pie}>
       <Encabezado titulo={incierto ? 'Revisar y cobrar' : 'Confirmar venta'}
                   subtitulo={incierto ? 'Resultado pendiente de comprobación' : 'Paso 3 de 3 · Revisa los datos antes del registro'} />
       {incierto && (

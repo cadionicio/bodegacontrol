@@ -1,7 +1,7 @@
 """SQL de catálogo. Solo consultas parametrizadas: ninguna entrada del usuario se concatena."""
 from psycopg import Connection, sql
 
-_COLUMNAS_EDITABLES = ("codigo", "nombre", "precio", "costo", "stock_minimo", "codigo_barras", "activo")
+_COLUMNAS_EDITABLES = ("nombre", "precio", "costo", "stock_minimo", "codigo_barras", "activo")
 
 
 def listar(cx: Connection, buscar: str | None, incluir_inactivos: bool, solo_por_reponer: bool) -> list[dict]:
@@ -25,8 +25,8 @@ def obtener_por_codigo_barras(cx: Connection, codigo_barras: str) -> dict | None
 
 def insertar(cx: Connection, datos: dict) -> int:
     return cx.execute("""
-        INSERT INTO bc.producto (codigo, nombre, precio, costo, stock_minimo, codigo_barras)
-        VALUES (%(codigo)s, %(nombre)s, %(precio)s, %(costo)s, %(stock_minimo)s, %(codigo_barras)s)
+        INSERT INTO bc.producto (nombre, precio, costo, stock_minimo, codigo_barras)
+        VALUES (%(nombre)s, %(precio)s, %(costo)s, %(stock_minimo)s, %(codigo_barras)s)
         RETURNING producto_id""", datos).fetchone()["producto_id"]
 
 

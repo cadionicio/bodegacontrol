@@ -26,7 +26,7 @@ export function Movimientos() {
   const { esPropietario } = useSesion();
   const [dias, setDias] = useState('30');
   const [tipo, setTipo] = useState('TODOS');
-  const { datos, error, cargando } = useCarga(() => api.inventario.detalle(id, 200), [id]);
+  const { datos, error, cargando } = useCarga(() => api.inventario.detalle(id, 50), [id]);
 
   const visibles = useMemo(() => {
     const limite = dias === 'TODO' ? 0 : Date.now() - Number(dias) * 86_400_000;
@@ -63,7 +63,7 @@ export function Movimientos() {
                       opciones={[['TODOS', 'Todos'], ['ENTRADAS', 'Entradas'], ['SALIDAS', 'Ventas'], ['MERMAS', 'Mermas']]} />
           </div>
           <section className="lista">
-            <h2 className="seccion-titulo">Historial <span className="texto-gris" style={{ fontWeight: 400, fontSize: 13 }}>{visibles.length} movimientos</span></h2>
+            <h2 className="seccion-titulo">Historial <span className="texto-gris" style={{ fontWeight: 400, fontSize: 13 }}>últimos {visibles.length}</span></h2>
             {!visibles.length && <div className="vacio">Sin movimientos en este filtro.</div>}
             {visibles.map((m) => (
               <div key={m.movimiento_id} className="item" style={{ alignItems: 'flex-start' }}>

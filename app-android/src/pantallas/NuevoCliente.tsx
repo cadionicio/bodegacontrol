@@ -53,7 +53,7 @@ export function NuevoCliente() {
   };
 
   return (
-    <Pantalla titulo="Nuevo cliente" volver={-1} navegacion={false} pie={
+    <Pantalla titulo="Nuevo cliente" volver={-1} pie={
       <>
         <button className="boton boton--secundario" onClick={() => navegar(-1)}>Cancelar</button>
         <button className="boton" disabled={enviando} onClick={guardar}>

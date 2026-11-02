@@ -62,7 +62,7 @@ export function Cobro() {
   };
 
   return (
-    <Pantalla titulo="Revisar y cobrar" volver="/ventas" navegacion={false} pie={
+    <Pantalla titulo="Revisar y cobrar" volver="/ventas" pie={
       <>
         <button className="boton boton--secundario" onClick={() => { borrador.fijarPago(pago); navegar('/ventas'); }}>Volver al carrito</button>
         <button className="boton" onClick={continuar}>Continuar</button>
@@ -101,9 +101,10 @@ export function Cobro() {
         </>
       ) : (
         <>
-          <Campo etiqueta="Referencia de pago externo" placeholder="N.º de operación" value={pago.referencia ?? ''}
-                 maxLength={80} onChange={(e) => actualizar({ referencia: e.target.value })} error={errores.referencia}
-                 ayuda={`Copie el número de operación que muestra ${nombreApp}. No se solicitan datos de tarjeta.`} />
+          <Campo etiqueta={`N.º de operación ${pago.metodo === 'TARJETA' ? 'del voucher' : `de ${nombreApp}`}`} placeholder="Ej. 48213377"
+                 value={pago.referencia ?? ''} maxLength={80} onChange={(e) => actualizar({ referencia: e.target.value })} error={errores.referencia}
+                 ayuda={pago.metodo === 'TARJETA' ? 'Número impreso en el voucher del POS. No se piden datos de la tarjeta.'
+                   : `Número que aparece en la constancia de ${nombreApp} del cliente. Sirve para comprobar el pago después.`} />
           <label className="casilla">
             <input type="checkbox" checked={!!pago.verificado} onChange={(e) => actualizar({ verificado: e.target.checked })} />
             Verifiqué que el pago de {soles(total)} llegó en {nombreApp}
@@ -111,7 +112,6 @@ export function Cobro() {
           {errores.verificado && <p className="error-campo">{errores.verificado}</p>}
         </>
       )}
-      <p className="ayuda centro">Todavía no se registra la venta.</p>
     </Pantalla>
   );
 }

@@ -5,7 +5,6 @@ import { Link, useNavigate } from 'react-router-dom';
 import { api } from '../api/recursos';
 import { Aviso, Cargando, GraficoBarras } from '../componentes/controles';
 import { Pantalla } from '../componentes/estructura';
-import { NOMBRE_NEGOCIO } from '../configuracion';
 import { tiempoRestante, totalBorrador, unidadesBorrador, useBorrador } from '../estado/borrador';
 import { useSesion, useUsuario } from '../estado/sesion';
 import { diaCorto, entero, folioVenta, formatoFecha, formatoHora, hoyLima, soles } from '../utilidades/formato';
@@ -132,7 +131,7 @@ export function Inicio() {
     <Pantalla>
       <div>
         <h1 className="titulo-pantalla">Hola, {usuario.nombre.split(' ')[0]}</h1>
-        <p className="subtitulo-pantalla">{NOMBRE_NEGOCIO} · {formatoFecha(Date.now())}</p>
+        <p className="subtitulo-pantalla">{formatoFecha(Date.now())}</p>
       </div>
       <VentaPausada />
       {esPropietario ? <TableroPropietario /> : <TableroCajero />}

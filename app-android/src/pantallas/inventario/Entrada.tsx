@@ -42,7 +42,7 @@ export function RegistrarEntrada() {
   };
 
   return (
-    <Pantalla titulo="Registrar entrada" volver={-1} navegacion={false} pie={
+    <Pantalla titulo="Registrar entrada" volver={-1} pie={
       <>
         <button className="boton boton--secundario" onClick={() => navegar(-1)}>Cancelar</button>
         <button className="boton" disabled={enviando} onClick={registrar}>

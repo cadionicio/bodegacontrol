@@ -8,12 +8,9 @@ from decimal import Decimal
 from typing import Annotated, Literal
 from uuid import UUID
 
-from pydantic import BaseModel, BeforeValidator, ConfigDict, Field, StringConstraints, model_validator
+from pydantic import BaseModel, ConfigDict, Field, StringConstraints, model_validator
 
 Texto = lambda maximo: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=maximo)]
-# Se normaliza ANTES de validar el patrón: "p0100 " es un código válido escrito por el cajero.
-CodigoProducto = Annotated[str, BeforeValidator(lambda v: v.strip().upper() if isinstance(v, str) else v),
-                           StringConstraints(pattern=r"^[A-Z0-9][A-Z0-9_-]{1,31}$")]
 CodigoBarras = Annotated[str, StringConstraints(strip_whitespace=True, pattern=r"^[A-Za-z0-9._-]{4,64}$")]
 Precio = Annotated[Decimal, Field(gt=0, max_digits=12, decimal_places=2)]
 Costo = Annotated[Decimal, Field(ge=0, max_digits=12, decimal_places=2)]
@@ -38,7 +35,7 @@ class Credenciales(Entrada):
 
 
 class ProductoCrear(Entrada):
-    codigo: CodigoProducto
+    """Sin código: la BD asigna el correlativo (P0009…). Enviarlo se rechaza por extra="forbid"."""
     nombre: Texto(120)
     precio: Precio
     costo: Costo | None = None
@@ -48,8 +45,7 @@ class ProductoCrear(Entrada):
 
 
 class ProductoEditar(Entrada):
-    """Sin campo de stock: el stock solo cambia con movimientos (reposición, merma, venta)."""
-    codigo: CodigoProducto | None = None
+    """Sin stock (cambia solo con movimientos) ni código (identificador asignado por el sistema)."""
     nombre: Texto(120) | None = None
     precio: Precio | None = None
     costo: Costo | None = None
@@ -62,7 +58,7 @@ class ProductoEditar(Entrada):
         if not self.model_fields_set:
             raise ValueError("Envíe al menos un campo para modificar")
         # Estos campos son obligatorios en la BD: enviarlos como null no tiene sentido.
-        nulos = [c for c in ("codigo", "nombre", "precio", "stock_minimo", "activo")
+        nulos = [c for c in ("nombre", "precio", "stock_minimo", "activo")
                  if c in self.model_fields_set and getattr(self, c) is None]
         if nulos:
             raise ValueError(f"No pueden ser nulos: {', '.join(nulos)}")

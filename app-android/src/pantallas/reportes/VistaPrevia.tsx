@@ -6,7 +6,6 @@ import { mensajeDeError } from '../../api/cliente';
 import { api, type FiltrosReporte } from '../../api/recursos';
 import { Aviso, Cargando, GraficoBarras } from '../../componentes/controles';
 import { Pantalla } from '../../componentes/estructura';
-import { NOMBRE_NEGOCIO } from '../../configuracion';
 import { NOMBRE_MOTIVO, entero, formatoFecha, soles } from '../../utilidades/formato';
 import { useCarga } from '../../utilidades/useCarga';
 import { descargarReporte } from './Generar';
@@ -33,7 +32,7 @@ export function VistaPrevia() {
   };
 
   return (
-    <Pantalla titulo="Vista previa" volver={-1} navegacion={false} pie={
+    <Pantalla titulo="Vista previa" volver={-1} pie={
       <>
         <button className="boton boton--secundario" disabled={!!exportando || !datos} onClick={() => exportar('CSV')}>
           {exportando === 'CSV' ? <LoaderCircle className="girando" size={18} /> : <FileSpreadsheet size={18} />}Exportar CSV</button>
@@ -61,7 +60,7 @@ export function VistaPrevia() {
               <article className="hoja">
                 <div className="fila" style={{ gap: 10 }}>
                   <Store size={28} color="var(--verde)" />
-                  <div><h3>BodegaControl · {NOMBRE_NEGOCIO}</h3><div className="texto-gris">Reporte de {estado.tipo}</div></div>
+                  <div><h3>BodegaControl</h3><div className="texto-gris">Reporte de {estado.tipo}</div></div>
                 </div>
                 <p style={{ marginTop: 8 }}>Periodo: {reporte.intervalo.etiqueta}<br />Generado: {formatoFecha(Date.now())}</p>
                 <div className="reticula-3" style={{ marginTop: 10 }}>

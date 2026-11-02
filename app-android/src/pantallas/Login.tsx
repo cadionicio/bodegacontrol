@@ -4,7 +4,6 @@ import { useState, type FormEvent } from 'react';
 import { ErrorApi, configurarCliente, mensajeDeError } from '../api/cliente';
 import { api } from '../api/recursos';
 import { Aviso, Campo } from '../componentes/controles';
-import { VERSION_APP } from '../configuracion';
 import { useSesion } from '../estado/sesion';
 
 function AjustesServidor({ alCerrar }: { alCerrar: () => void }) {
@@ -107,7 +106,6 @@ export function Login() {
             {enviando && <LoaderCircle className="girando" size={18} />}{enviando ? 'Verificando…' : 'Iniciar sesión'}
           </button>
         </form>
-        <p className="centro texto-gris" style={{ marginTop: 'auto', paddingTop: 48, fontSize: 12.5 }}>BodegaControl v{VERSION_APP}</p>
       </main>
       {ajustes && <AjustesServidor alCerrar={() => setAjustes(false)} />}
     </div>

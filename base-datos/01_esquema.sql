@@ -27,9 +27,17 @@ CREATE TABLE usuario (
 );
 
 -- ───────────────────────── Catálogo e inventario ─────────────────────────
+-- Código interno correlativo (P0001, P0002…) asignado por la BD: nadie tiene que inventarlo y una
+-- secuencia no repite valores aunque dos altas ocurran a la vez. Pasa de 4 dígitos sin truncarse (P10000).
+CREATE SEQUENCE producto_codigo_seq;
+CREATE FUNCTION siguiente_codigo_producto() RETURNS TEXT LANGUAGE sql AS $$
+    SELECT 'P' || LPAD(n::TEXT, GREATEST(4, LENGTH(n::TEXT)), '0') FROM NEXTVAL('bc.producto_codigo_seq') AS n
+$$;
+
 CREATE TABLE producto (
     producto_id    BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    codigo         VARCHAR(32) NOT NULL UNIQUE CHECK (codigo ~ '^[A-Z0-9][A-Z0-9_-]{1,31}$'),
+    codigo         VARCHAR(32) NOT NULL UNIQUE DEFAULT siguiente_codigo_producto()
+                   CHECK (codigo ~ '^[A-Z0-9][A-Z0-9_-]{1,31}$'),
     -- Etiqueta EAN/UPC o QR reconocido: distinta del código interno y opcional.
     codigo_barras  VARCHAR(64) UNIQUE CHECK (codigo_barras ~ '^[A-Za-z0-9._-]{4,64}$'),
     nombre         VARCHAR(120) NOT NULL CHECK (LENGTH(BTRIM(nombre)) > 0),

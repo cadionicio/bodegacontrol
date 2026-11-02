@@ -59,7 +59,7 @@ export function Escanear() {
   };
 
   return (
-    <Pantalla titulo="Escanear código" volver={-1} navegacion={false} pie={
+    <Pantalla titulo="Escanear código" volver={-1} pie={
       <>
         <button className="boton boton--secundario" onClick={() => navegar(-1)}>Cancelar</button>
         <button className="boton" disabled={ocupado} onClick={buscar}>

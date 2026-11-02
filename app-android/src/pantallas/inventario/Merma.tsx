@@ -54,7 +54,7 @@ export function RegistrarMerma() {
   };
 
   return (
-    <Pantalla titulo="Registrar merma" volver={-1} navegacion={false} pie={
+    <Pantalla titulo="Registrar merma" volver={-1} pie={
       <>
         <button className="boton boton--secundario" onClick={() => navegar(-1)}>Cancelar</button>
         <button className="boton" onClick={validar}>Registrar merma</button>

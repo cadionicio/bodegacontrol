@@ -15,7 +15,7 @@ export interface Producto {
   por_reponer: boolean; actualizado_en: string; imagen_version: number | null;
 }
 export interface DatosProducto {
-  codigo?: string; nombre?: string; precio?: number; costo?: number | null; stock_minimo?: number;
+  nombre?: string; precio?: number; costo?: number | null; stock_minimo?: number;
   stock_inicial?: number; codigo_barras?: string | null; activo?: boolean;
 }
 

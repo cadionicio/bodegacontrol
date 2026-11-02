@@ -149,7 +149,6 @@ export function Carrito() {
           <span className="total__monto">{soles(totalBorrador(b))}</span>
         </div>
       )}
-      <p className="ayuda centro">El carrito se conserva si interrumpes la operación.</p>
     </Pantalla>
   );
 }

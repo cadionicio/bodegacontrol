@@ -6,13 +6,13 @@
 
 | Archivo | Qué hace | Cuándo se ejecuta |
 |---|---|---|
-| `01_esquema.sql` | Crea el esquema `bc`: 11 tablas, restricciones, índices, 8 funciones/triggers, 6 vistas y los 2 roles. Todo en una transacción: si una línea falla, no queda nada a medias. | Una vez, sobre una base vacía (local o Neon). |
+| `01_esquema.sql` | Crea el esquema `bc`: 11 tablas, una secuencia, restricciones, índices, 9 funciones/triggers, 6 vistas y los 2 roles. Todo en una transacción: si una línea falla, no queda nada a medias. | Una vez, sobre una base vacía (local o Neon). |
 | `02_datos_iniciales.sql` | Crea los 2 usuarios de demostración (hash bcrypt real) y 8 productos con su stock de apertura registrado como movimiento `ALTA`. | Después de `01`. |
-| `03_pruebas_esquema.py` | 44 casos automáticos: 8 operaciones válidas que deben aceptarse, 35 inválidas que deben rechazarse y la conciliación del stock. Cada caso se revierte; la base queda intacta. | Después de `02`, y cada vez que se cambie el esquema. |
+| `03_pruebas_esquema.py` | 45 casos automáticos: 9 operaciones válidas que deben aceptarse, 35 inválidas que deben rechazarse y la conciliación del stock. Cada caso se revierte; la base queda intacta. | Después de `02`, y cada vez que se cambie el esquema. |
 | `04_modelo_er.mmd` / `.png` | Diagrama entidad-relación (fuente Mermaid e imagen). | Se regenera la imagen si cambia el esquema. |
 | `DICCIONARIO_DE_DATOS.md` | Este documento. | — |
 
-**Orden de instalación:** `01_esquema.sql` → `02_datos_iniciales.sql` → `python 03_pruebas_esquema.py` (debe terminar en `44/44`).
+**Orden de instalación:** `01_esquema.sql` → `02_datos_iniciales.sql` → `python 03_pruebas_esquema.py` (debe terminar en `45/45`).
 
 ## Convenciones
 
@@ -60,7 +60,7 @@
 | Atributo | Tipo | Nulo | Descripción | Motivo de uso | Ejemplo |
 |---|---|---|---|---|---|
 | `producto_id` | BIGINT identidad | No | Identificador (PK). | Referencia estable aunque cambien el código o el nombre. | `1` |
-| `codigo` | VARCHAR(32) único | No | Código interno: mayúsculas, dígitos, `_` o `-`, de 2 a 32 caracteres. | Búsqueda rápida y escritura manual en caja. | `P0001` |
+| `codigo` | VARCHAR(32) único | No (automático) | Código interno **correlativo asignado por la BD** (`siguiente_codigo_producto()` sobre la secuencia `producto_codigo_seq`). No se escribe ni se edita. | Nadie tiene que inventar códigos y nunca se repiten, ni siquiera con dos altas simultáneas. | `P0009` |
 | `codigo_barras` | VARCHAR(64) único | Sí | EAN/UPC o contenido de un QR reconocido. | El escáner busca por este campo. Es opcional porque no todo producto tiene etiqueta (ej. el pan). | `7751271001234` |
 | `nombre` | VARCHAR(120) | No | Descripción comercial. | Se muestra en catálogo, carrito y reportes. | `Coca-Cola 500 ml` |
 | `precio` | NUMERIC(12,2) | No | Precio de venta vigente, mayor que 0. | El servidor lo toma de aquí; nunca confía en un precio enviado por el celular (RN-04). | `3.50` |
@@ -202,6 +202,7 @@
 
 | Nombre | Se dispara | Qué garantiza |
 |---|---|---|
+| `siguiente_codigo_producto()` | Valor por defecto de `producto.codigo` | Correlativo P0001, P0002… sin truncar al pasar de 9999. |
 | `variacion_stock(tipo, cantidad)` | La usan triggers y vistas | Fuente única del signo: `SALIDA_VENTA` y `MERMA` restan; `ALTA` y `ENTRADA` suman. |
 | `tr_producto_saldo` | Después de insertar un producto | Crea su saldo en 0. |
 | `tr_producto_actualizado` | Antes de editar un producto | Pone `actualizado_en = NOW()`. |

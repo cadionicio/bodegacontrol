@@ -53,7 +53,6 @@ export function VentaPendiente() {
           <div key={l.producto_id} className="par"><dt>{l.nombre} ×{l.cantidad}</dt><dd className="num">{soles(l.precio * l.cantidad)}</dd></div>
         ))}
       </section>
-      <p className="ayuda">Los productos y cantidades siguen guardados; se comprobará el stock nuevamente antes de registrar.</p>
       {descartar && (
         <Confirmacion titulo="¿Descartar la venta pausada?" peligro textoConfirmar="Descartar"
                       mensaje="Se borrará el carrito de este celular. No afecta el stock ni el historial."

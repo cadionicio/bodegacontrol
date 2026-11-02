@@ -27,7 +27,7 @@ export function RevisarVenta() {
   };
 
   return (
-    <Pantalla titulo="Revisar venta" volver="/ventas" navegacion={false} pie={
+    <Pantalla titulo="Revisar venta" volver="/ventas" pie={
       <>
         <button className="boton boton--secundario" onClick={() => navegar('/ventas')}>Volver al carrito</button>
         <button className="boton" onClick={corregir}>Corregir cantidad</button>
