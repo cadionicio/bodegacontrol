@@ -23,7 +23,7 @@ def test_t03_venta_correcta_registra_todo_en_una_transaccion(cliente_http, cajer
     cuerpo = respuesta.json()
     assert respuesta.status_code == 201
     assert (cuerpo["estado"], cuerpo["total"], cuerpo["vuelto"], cuerpo["repetida"]) == ("CONFIRMADA", 7.0, 13.0, False)
-    assert stock(sql, 1) == 22
+    assert stock(sql, 1) == 46
     # Venta, detalle con precio histórico, salida trazable y pago por el total (no por lo recibido).
     assert sql("SELECT d.precio_unitario, m.tipo, m.cantidad, p.monto, p.importe_recibido FROM bc.detalle_venta d "
                "JOIN bc.movimiento_inventario m USING (detalle_id) JOIN bc.venta_pago p USING (venta_id) "
@@ -42,9 +42,9 @@ def test_t04_falta_de_stock_no_escribe_nada_y_detalla_la_linea(cliente_http, caj
     cuerpo = respuesta.json()
     assert respuesta.status_code == 409 and cuerpo["codigo"] == "STOCK_INSUFICIENTE"
     assert cuerpo["conservar_borrador"] is True
-    assert cuerpo["errores"] == [{"producto_id": 3, "nombre": "Galletas Soda Field 6 und.", "solicitado": 9,
+    assert cuerpo["errores"] == [{"producto_id": 3, "nombre": "Galletas Ritz 6 und.", "solicitado": 9,
                                   "disponible": 8}]
-    assert sql("SELECT COUNT(*) FROM bc.venta")[0][0] == 0 and stock(sql, 1) == 24  # sin escritura parcial
+    assert sql("SELECT COUNT(*) FROM bc.venta")[0][0] == 0 and stock(sql, 1) == 48  # sin escritura parcial
 
 
 def test_t05_reintento_identico_no_duplica_la_venta(cliente_http, cajero, sql):
@@ -54,7 +54,7 @@ def test_t05_reintento_identico_no_duplica_la_venta(cliente_http, cajero, sql):
     segunda = cliente_http.post(API, headers=cajero, json=cuerpo)
     assert (primera.status_code, segunda.status_code) == (201, 200)
     assert primera.json()["venta_id"] == segunda.json()["venta_id"] and segunda.json()["repetida"] is True
-    assert sql("SELECT COUNT(*) FROM bc.venta")[0][0] == 1 and stock(sql, 1) == 23
+    assert sql("SELECT COUNT(*) FROM bc.venta")[0][0] == 1 and stock(sql, 1) == 47
 
 
 def test_t05_misma_clave_con_otro_contenido_es_409(cliente_http, cajero, sql):

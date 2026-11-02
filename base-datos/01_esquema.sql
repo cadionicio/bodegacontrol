@@ -1,5 +1,5 @@
 -- BodegaControl V6 | Grupo 2 · UNI | PostgreSQL 16+
--- Esquema consolidado (v3 + v5 + v6 + costo, stock mínimo y mermas). Sustituye la cadena de
+-- Esquema consolidado (v3 + v5 + v6 + costo, stock mínimo, mermas e imágenes). Sustituye la cadena de
 -- migraciones porque aún no existe una base productiva que migrar.
 -- Las reglas de negocio (permisos, precios, idempotencia) viven en la capa de servicios de la API;
 -- aquí solo se garantizan invariantes que ningún cliente, ni un backend con errores, debe romper.
@@ -47,6 +47,16 @@ CREATE TABLE producto (
 CREATE TABLE inventario_saldo (
     producto_id    BIGINT PRIMARY KEY REFERENCES producto ON DELETE RESTRICT,
     cantidad       INTEGER NOT NULL DEFAULT 0 CONSTRAINT ck_saldo_no_negativo CHECK (cantidad >= 0),
+    actualizado_en TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Foto del producto en tabla aparte: el catálogo se consulta sin arrastrar binarios.
+-- No es historia de negocio: puede reemplazarse o eliminarse.
+CREATE TABLE producto_imagen (
+    producto_id    BIGINT PRIMARY KEY REFERENCES producto ON DELETE RESTRICT,
+    tipo_mime      VARCHAR(10) NOT NULL CHECK (tipo_mime IN ('image/jpeg', 'image/png', 'image/webp')),
+    -- Límite de 500 KB: la app comprime la foto antes de subirla; evita inflar la base gratuita.
+    contenido      BYTEA NOT NULL CHECK (OCTET_LENGTH(contenido) BETWEEN 100 AND 512000),
     actualizado_en TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
@@ -299,11 +309,15 @@ FROM venta v
 JOIN detalle_venta d ON d.venta_id = v.venta_id
 JOIN producto pr     ON pr.producto_id = d.producto_id;
 
+-- imagen_version cambia al reemplazar la foto: la app la usa para invalidar su caché.
 CREATE VIEW v_producto_stock AS
 SELECT p.producto_id, p.codigo, p.codigo_barras, p.nombre, p.precio, p.costo,
        p.stock_minimo, p.activo, s.cantidad AS stock, s.actualizado_en AS stock_actualizado_en,
-       (s.cantidad <= p.stock_minimo) AS por_reponer
-FROM producto p JOIN inventario_saldo s ON s.producto_id = p.producto_id;
+       (s.cantidad <= p.stock_minimo) AS por_reponer, p.actualizado_en,
+       EXTRACT(EPOCH FROM i.actualizado_en)::BIGINT AS imagen_version
+FROM producto p
+JOIN inventario_saldo s       ON s.producto_id = p.producto_id
+LEFT JOIN producto_imagen i   ON i.producto_id = p.producto_id;
 
 -- Base del reporte de mermas: pérdida valorizada al costo vigente en el momento de la baja.
 CREATE VIEW v_merma AS

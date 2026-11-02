@@ -84,8 +84,8 @@ def stock(cx, codigo):
 def venta_valida(cx):
     venta = registrar_venta(cx, [("P0001", 2), ("P0003", 1)], recibido=20)
     fila = consultar(cx, "SELECT total, ganancia, vuelto FROM bc.v_venta_resumen WHERE venta_id = %s", venta)[0]
-    assert stock(cx, "P0001") == 22 and fila == (D('11.20'), D('2.90'), D('8.80')), fila
-    return f"total={fila[0]} ganancia={fila[1]} vuelto={fila[2]} stock P0001=22"
+    assert stock(cx, "P0001") == 46 and fila == (D('11.20'), D('2.90'), D('8.80')), fila
+    return f"total={fila[0]} ganancia={fila[1]} vuelto={fila[2]} stock P0001=46"
 
 
 def venta_sin_costo(cx):
@@ -171,6 +171,8 @@ CASOS_INVALIDOS = [
     ("DNI duplicado", lambda cx: cx.execute("INSERT INTO bc.cliente (tipo_documento, numero_documento, nombre) "
                                            "VALUES ('DNI', '12345678', 'Ana'), ('DNI', '12345678', 'Eva')")),
     ("Contraseña sin hash bcrypt", lambda cx: cx.execute("INSERT INTO bc.usuario (rol_id, nombre, correo, contrasena_hash) VALUES (1, 'X', 'x@y.pe', 'clave')")),
+    ("Imagen de producto vacía", lambda cx: cx.execute("INSERT INTO bc.producto_imagen VALUES (1, 'image/jpeg', '\\x00')")),
+    ("Imagen con formato no permitido", lambda cx: cx.execute("INSERT INTO bc.producto_imagen VALUES (1, 'image/gif', decode(repeat('ff', 200), 'hex'))")),
     ("Correo con mayúsculas", lambda cx: cx.execute("INSERT INTO bc.usuario (rol_id, nombre, correo, contrasena_hash) VALUES (1, 'X', 'X@Y.pe', '$2b$x')")),
 ]
 

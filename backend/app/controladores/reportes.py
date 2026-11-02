@@ -2,7 +2,7 @@
 from datetime import date
 from typing import Literal
 
-from fastapi import APIRouter, Depends, Response
+from fastapi import APIRouter, Depends, Query, Response
 from psycopg import Connection
 
 from app.base_datos import obtener_conexion
@@ -20,6 +20,13 @@ def resumen(periodo: Periodo = "DIARIO", fecha: date | None = None, desde: date 
     return servicio.resumen(cx, periodo, fecha, desde, hasta)
 
 
+@enrutador.get("/exportaciones", summary="Últimos reportes PDF/CSV generados (auditoría RF-18)")
+def exportaciones(limite: int = Query(5, ge=1, le=50), _: UsuarioSesion = Depends(requerir_propietario),
+                  cx: Connection = Depends(obtener_conexion)):
+    return servicio.exportaciones_recientes(cx, limite)
+
+
+# Declarada al final: /resumen y /exportaciones no deben capturarse como {tipo}.
 @enrutador.get("/{tipo}", summary="Reporte de ventas o mermas en JSON (vista previa), PDF o CSV",
                description="`fecha` = cualquier día del periodo (por defecto hoy). PERSONALIZADO exige `desde` y `hasta`.")
 def exportar(tipo: Literal["ventas", "mermas"], formato: Literal["JSON", "PDF", "CSV"] = "JSON",

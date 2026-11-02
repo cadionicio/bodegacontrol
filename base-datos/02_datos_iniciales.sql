@@ -16,13 +16,14 @@ JOIN rol r ON r.codigo = u.rol;
 
 -- El trigger tr_producto_saldo crea cada saldo en 0 y tr_aplicar_movimiento suma el ALTA:
 -- el stock inicial queda trazado desde el primer día.
+-- Catálogo alineado con los prompts de pantallas. Galletas y azúcar inician "por reponer";
 -- 'Pan francés' no tiene costo registrado a propósito: demuestra la ganancia "sin dato".
 WITH datos (codigo, nombre, precio, costo, stock, minimo) AS (VALUES
-    ('P0001', 'Coca-Cola 500 ml', 3.50, 2.60, 24, 10),
+    ('P0001', 'Coca-Cola 500 ml', 3.50, 2.60, 48, 10),
     ('P0002', 'Inca Kola 500 ml', 3.50, 2.60, 36, 10),
-    ('P0003', 'Galletas Soda Field 6 und.', 4.20, 3.10, 8, 5),
-    ('P0004', 'Leche Gloria azul 400 g', 4.80, 3.90, 52, 12),
-    ('P0005', 'Arroz Costeño 1 kg', 5.20, 4.30, 30, 8),
+    ('P0003', 'Galletas Ritz 6 und.', 4.20, 3.10, 8, 10),
+    ('P0004', 'Leche Gloria 1 L', 4.80, 3.90, 52, 12),
+    ('P0005', 'Arroz Costeño 5 kg', 24.90, 21.50, 18, 5),
     ('P0006', 'Azúcar rubia 1 kg', 4.50, 3.70, 4, 6),
     ('P0007', 'Aceite Primor 1 L', 11.90, 9.80, 12, 4),
     ('P0008', 'Pan francés (unidad)', 0.30, NULL, 60, 20)

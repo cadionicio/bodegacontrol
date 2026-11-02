@@ -57,4 +57,28 @@ def test_escaneo_encuentra_producto_o_404_para_busqueda_manual(cliente_http, pro
 
 def test_filtro_por_reponer(cliente_http, cajero):
     codigos = [p["codigo"] for p in cliente_http.get(API, headers=cajero, params={"por_reponer": True}).json()]
-    assert codigos == ["P0006"]
+    assert codigos == ["P0006", "P0003"]  # azúcar y galletas inician bajo su stock mínimo
+
+
+# JPEG mínimo válido (1×1 px): la API valida la firma binaria real, no la extensión ni la cabecera.
+JPEG = bytes.fromhex("ffd8ffe000104a46494600010100000100010000ffdb004300") + bytes(64) + bytes.fromhex(
+    "ffc0000b080001000101011100ffc40014000100000000000000000000000000000000ffda0008010100003f00d2cf20ffd9")
+
+
+def test_foto_de_producto_subir_ver_reemplazar_y_quitar(cliente_http, propietario, cajero):
+    url = f"{API}/1/imagen"
+    assert cliente_http.get(url).status_code == 404
+    subida = cliente_http.put(url, headers={**propietario, "Content-Type": "image/jpeg"}, content=JPEG)
+    assert subida.status_code == 200 and subida.json()["imagen_version"] is not None
+    foto = cliente_http.get(url)  # pública: <img src> no envía token
+    assert foto.status_code == 200 and foto.headers["content-type"] == "image/jpeg" and foto.content == JPEG
+    assert cliente_http.delete(url, headers=propietario).status_code == 204
+    assert cliente_http.get(f"{API}/1", headers=cajero).json()["imagen_version"] is None
+
+
+def test_foto_invalida_grande_o_sin_permiso(cliente_http, propietario, cajero):
+    url = f"{API}/1/imagen"
+    falsa = cliente_http.put(url, headers={**propietario, "Content-Type": "image/jpeg"}, content=b"MZ" + bytes(500))
+    grande = cliente_http.put(url, headers={**propietario, "Content-Type": "image/jpeg"}, content=JPEG + bytes(600_000))
+    ajena = cliente_http.put(url, headers={**cajero, "Content-Type": "image/jpeg"}, content=JPEG)
+    assert (falsa.json()["codigo"], grande.status_code, ajena.status_code) == ("IMAGEN_INVALIDA", 413, 403)

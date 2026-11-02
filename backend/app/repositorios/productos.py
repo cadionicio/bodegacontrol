@@ -45,3 +45,19 @@ def bloquear_con_saldo(cx: Connection, ids: list[int]) -> list[dict]:
         SELECT p.producto_id, p.codigo, p.nombre, p.precio, p.costo, p.activo, s.cantidad AS stock
         FROM bc.producto p JOIN bc.inventario_saldo s USING (producto_id)
         WHERE p.producto_id = ANY(%s) ORDER BY p.producto_id FOR UPDATE OF s""", (ids,)).fetchall()
+
+
+def guardar_imagen(cx: Connection, producto_id: int, tipo_mime: str, contenido: bytes) -> None:
+    cx.execute("""INSERT INTO bc.producto_imagen (producto_id, tipo_mime, contenido) VALUES (%s, %s, %s)
+                  ON CONFLICT (producto_id) DO UPDATE
+                  SET tipo_mime = EXCLUDED.tipo_mime, contenido = EXCLUDED.contenido, actualizado_en = NOW()""",
+               (producto_id, tipo_mime, contenido))
+
+
+def obtener_imagen(cx: Connection, producto_id: int) -> dict | None:
+    return cx.execute("""SELECT tipo_mime, contenido, EXTRACT(EPOCH FROM actualizado_en)::BIGINT AS version
+                         FROM bc.producto_imagen WHERE producto_id = %s""", (producto_id,)).fetchone()
+
+
+def eliminar_imagen(cx: Connection, producto_id: int) -> bool:
+    return cx.execute("DELETE FROM bc.producto_imagen WHERE producto_id = %s", (producto_id,)).rowcount == 1

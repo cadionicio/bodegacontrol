@@ -89,3 +89,11 @@ def registrar_exportacion(cx: Connection, usuario_id: int, tipo: str, formato: s
     cx.execute("""INSERT INTO bc.reporte_exportacion
                   (usuario_id, tipo_reporte, formato, periodo, desde, hasta_exclusivo, cantidad_filas)
                   VALUES (%s, %s, %s, %s, %s, %s, %s)""", (usuario_id, tipo, formato, periodo, desde, hasta, filas))
+
+
+def exportaciones_recientes(cx: Connection, limite: int) -> list[dict]:
+    return cx.execute("""
+        SELECT e.exportacion_id, e.tipo_reporte, e.formato, e.periodo, e.desde, e.hasta_exclusivo,
+               e.cantidad_filas, e.generado_en, u.nombre AS generado_por
+        FROM bc.reporte_exportacion e JOIN bc.usuario u USING (usuario_id)
+        ORDER BY e.generado_en DESC, e.exportacion_id DESC LIMIT %s""", (limite,)).fetchall()

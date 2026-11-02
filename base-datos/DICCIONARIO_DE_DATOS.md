@@ -6,13 +6,13 @@
 
 | Archivo | Qué hace | Cuándo se ejecuta |
 |---|---|---|
-| `01_esquema.sql` | Crea el esquema `bc`: 10 tablas, restricciones, índices, 8 funciones/triggers, 6 vistas y los 2 roles. Todo en una transacción: si una línea falla, no queda nada a medias. | Una vez, sobre una base vacía (local o Neon). |
+| `01_esquema.sql` | Crea el esquema `bc`: 11 tablas, restricciones, índices, 8 funciones/triggers, 6 vistas y los 2 roles. Todo en una transacción: si una línea falla, no queda nada a medias. | Una vez, sobre una base vacía (local o Neon). |
 | `02_datos_iniciales.sql` | Crea los 2 usuarios de demostración (hash bcrypt real) y 8 productos con su stock de apertura registrado como movimiento `ALTA`. | Después de `01`. |
-| `03_pruebas_esquema.py` | 42 casos automáticos: 8 operaciones válidas que deben aceptarse, 33 inválidas que deben rechazarse y la conciliación del stock. Cada caso se revierte; la base queda intacta. | Después de `02`, y cada vez que se cambie el esquema. |
+| `03_pruebas_esquema.py` | 44 casos automáticos: 8 operaciones válidas que deben aceptarse, 35 inválidas que deben rechazarse y la conciliación del stock. Cada caso se revierte; la base queda intacta. | Después de `02`, y cada vez que se cambie el esquema. |
 | `04_modelo_er.mmd` / `.png` | Diagrama entidad-relación (fuente Mermaid e imagen). | Se regenera la imagen si cambia el esquema. |
 | `DICCIONARIO_DE_DATOS.md` | Este documento. | — |
 
-**Orden de instalación:** `01_esquema.sql` → `02_datos_iniciales.sql` → `python 03_pruebas_esquema.py` (debe terminar en `42/42`).
+**Orden de instalación:** `01_esquema.sql` → `02_datos_iniciales.sql` → `python 03_pruebas_esquema.py` (debe terminar en `44/44`).
 
 ## Convenciones
 
@@ -79,6 +79,17 @@
 | `actualizado_en` | TIMESTAMPTZ | No (NOW) | Último cambio de stock. | Auditoría. | `2026-11-02 10:20-05` |
 
 > **Regla clave:** nadie escribe directamente en esta tabla, ni siquiera el backend. Se crea sola al dar de alta un producto (trigger `tr_producto_saldo`) y cambia solo al registrar un movimiento (trigger `tr_aplicar_movimiento`). Un `UPDATE` o `DELETE` directo es rechazado (`tr_proteger_saldo`). Así el stock **no puede** descuadrarse del historial.
+
+## 4.1 `producto_imagen` — foto del producto
+
+| Atributo | Tipo | Nulo | Descripción | Motivo de uso | Ejemplo |
+|---|---|---|---|---|---|
+| `producto_id` | BIGINT PK → `producto` | No | Una foto por producto. | Tabla aparte: listar el catálogo no arrastra binarios pesados. | `3` |
+| `tipo_mime` | VARCHAR(10) | No | `image/jpeg`, `image/png` o `image/webp`. La API lo detecta por el contenido real del archivo. | Servir la imagen con el tipo correcto; un archivo disfrazado se rechaza. | `image/jpeg` |
+| `contenido` | BYTEA | No | Bytes de la foto, entre 100 B y 500 KB. | La app comprime la foto de la cámara antes de subirla; el límite protege la base gratuita. | (binario) |
+| `actualizado_en` | TIMESTAMPTZ | No (NOW) | Último reemplazo. | Se expone como `imagen_version`: al cambiar la foto cambia la URL y el celular no muestra la foto vieja de su caché. | — |
+
+> No es historia de negocio: la foto puede reemplazarse o quitarse. Se sube desde la app con la cámara (Productos → detalle → «Cambiar foto»).
 
 ## 5. `cliente` — clientes identificados (opcional)
 
@@ -206,7 +217,7 @@
 |---|---|---|
 | `v_venta_resumen` | venta, fecha, cajero, cliente, líneas, unidades, total, costo, ganancia, método, vuelto | Historial y detalle de venta; reporte de ventas. La ganancia es NULL si falta algún costo. |
 | `v_venta_detalle` | venta, fecha, producto, cantidad, precio, costo, importe, ganancia | CSV analítico, productos más vendidos. |
-| `v_producto_stock` | producto, precios, stock, stock mínimo, `por_reponer` | Pestañas Productos e Inventario; "por reponer" en Inicio. |
+| `v_producto_stock` | producto, precios, stock, stock mínimo, `por_reponer`, `imagen_version` | Pestañas Productos e Inventario; "por reponer" en Inicio. |
 | `v_merma` | fecha, producto, motivo, cantidad, costo, `valor_perdido`, observación | Reporte e indicador de mermas. |
 | `v_trazabilidad_producto` | movimiento, tipo, variación, saldo reconstruido, operador, venta | Detalle de inventario: "¿por qué tengo 22 unidades?". |
 | `v_descuadre_inventario` | producto, saldo, saldo según el libro | **Siempre debe estar vacía.** Es la prueba de conciliación de la demo. |
@@ -246,11 +257,11 @@
 
 | Código | Producto | Precio | Costo | Stock | Mínimo | Propósito en la demo |
 |---|---|---|---|---|---|---|
-| P0001 | Coca-Cola 500 ml | 3.50 | 2.60 | 24 | 10 | Venta normal. |
+| P0001 | Coca-Cola 500 ml | 3.50 | 2.60 | 48 | 10 | Venta normal (alineado con los prompts de pantallas). |
 | P0002 | Inca Kola 500 ml | 3.50 | 2.60 | 36 | 10 | — |
-| P0003 | Galletas Soda Field 6 und. | 4.20 | 3.10 | 8 | 5 | Probar stock insuficiente (vender 9). |
-| P0004 | Leche Gloria azul 400 g | 4.80 | 3.90 | 52 | 12 | Probar merma por vencimiento. |
-| P0005 | Arroz Costeño 1 kg | 5.20 | 4.30 | 30 | 8 | — |
-| P0006 | Azúcar rubia 1 kg | 4.50 | 3.70 | 4 | 6 | Ya aparece "por reponer". |
+| P0003 | Galletas Ritz 6 und. | 4.20 | 3.10 | 8 | 10 | Inicia "por reponer"; probar stock insuficiente (vender 9). |
+| P0004 | Leche Gloria 1 L | 4.80 | 3.90 | 52 | 12 | Probar merma por vencimiento. |
+| P0005 | Arroz Costeño 5 kg | 24.90 | 21.50 | 18 | 5 | — |
+| P0006 | Azúcar rubia 1 kg | 4.50 | 3.70 | 4 | 6 | Inicia "por reponer". |
 | P0007 | Aceite Primor 1 L | 11.90 | 9.80 | 12 | 4 | — |
 | P0008 | Pan francés (unidad) | 0.30 | **NULL** | 60 | 20 | Muestra la ganancia "sin dato" y un producto sin código de barras. |

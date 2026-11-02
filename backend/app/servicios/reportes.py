@@ -91,3 +91,8 @@ def exportar(cx: Connection, usuario: UsuarioSesion, tipo: str, formato: str, pe
         repo.registrar_exportacion(cx, usuario.usuario_id, tipo, formato, periodo, desde, hasta, len(filas))
     ultimo_dia = (hasta - timedelta(days=1)).date()
     return Archivo(contenido, mime, f"bodegacontrol_{tipo.lower()}_{desde:%Y-%m-%d}_{ultimo_dia:%Y-%m-%d}.{formato.lower()}")
+
+
+def exportaciones_recientes(cx: Connection, limite: int) -> list[dict]:
+    """El archivo no se almacena: la app ofrece "Generar de nuevo" con los mismos filtros."""
+    return repo.exportaciones_recientes(cx, limite)

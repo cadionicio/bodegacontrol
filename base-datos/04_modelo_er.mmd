@@ -6,6 +6,7 @@ erDiagram
     USUARIO ||--o{ REPORTE_EXPORTACION : genera
     CLIENTE |o--o{ VENTA : "identifica (opcional)"
     PRODUCTO ||--|| INVENTARIO_SALDO : mantiene
+    PRODUCTO ||--o| PRODUCTO_IMAGEN : "se ilustra con"
     PRODUCTO ||--o{ DETALLE_VENTA : integra
     PRODUCTO ||--o{ MOVIMIENTO_INVENTARIO : traza
     VENTA ||--|{ DETALLE_VENTA : contiene
@@ -29,6 +30,10 @@ erDiagram
           boolean activo }
     INVENTARIO_SALDO { bigint producto_id PK, FK
           int cantidad ">= 0" }
+    PRODUCTO_IMAGEN { bigint producto_id PK, FK
+          varchar tipo_mime "jpeg|png|webp"
+          bytea contenido "<= 500 KB"
+          timestamptz actualizado_en }
     CLIENTE { bigint cliente_id PK
           varchar tipo_documento "NINGUNO|DNI|RUC|CE"
           varchar numero_documento UK

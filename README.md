@@ -52,10 +52,10 @@ uvicorn app.main:app --reload --env-file .env
 ## Pruebas
 
 ```bash
-# Integridad del esquema (42 casos) sobre la base cargada
+# Integridad del esquema (44 casos) sobre la base cargada
 DATABASE_URL=postgresql://postgres:clave@localhost/bodega python base-datos/03_pruebas_esquema.py
 
-# API (41 casos, incluye T-01..T-09 del Plan Maestro). ¡La base indicada se BORRA y recrea!
+# API (44 casos, incluye T-01..T-09 del Plan Maestro). ¡La base indicada se BORRA y recrea!
 cd backend && DATABASE_URL_PRUEBAS=postgresql://postgres:clave@localhost/bodega_pruebas pytest pruebas -q
 ```
 
@@ -77,6 +77,8 @@ cd backend && DATABASE_URL_PRUEBAS=postgresql://postgres:clave@localhost/bodega_
 | POST | `/productos` | Propietario | Crear con stock inicial |
 | PATCH | `/productos/{id}` | Propietario | Editar (no el stock) |
 | DELETE | `/productos/{id}` | Propietario | Desactivar (baja lógica) |
+| PUT / DELETE | `/productos/{id}/imagen` | Propietario | Subir (binario JPEG/PNG/WebP ≤ 500 KB) o quitar la foto |
+| GET | `/productos/{id}/imagen` | Público | Foto del producto (cacheable) |
 | GET | `/inventario/{id}` | Ambos | Saldo y movimientos |
 | POST | `/inventario/{id}/entradas` | Propietario | Reposición |
 | POST | `/inventario/{id}/mermas` | Propietario | Merma (vencido, dañado, faltante, otro) |
@@ -86,5 +88,6 @@ cd backend && DATABASE_URL_PRUEBAS=postgresql://postgres:clave@localhost/bodega_
 | GET | `/ventas` | Ambos | Historial (cajero: solo las suyas) |
 | GET | `/ventas/{id}` | Ambos | Detalle con líneas y movimientos |
 | GET | `/reportes/resumen` | Propietario | Indicadores del periodo |
+| GET | `/reportes/exportaciones` | Propietario | Últimos PDF/CSV generados (auditoría) |
 | GET | `/reportes/{ventas\|mermas}` | Propietario | JSON, PDF o CSV por periodo |
 | GET | `/salud` | — | Estado de API y base de datos |

@@ -43,7 +43,7 @@ def test_trazabilidad_muestra_saldo_reconstruido(cliente_http, propietario, caje
         "clave_idempotencia": str(uuid.uuid4()), "lineas": [{"producto_id": 1, "cantidad": 4}],
         "pago": {"metodo": "EFECTIVO", "importe_recibido": 20}})
     movimientos = cliente_http.get(f"{API}/inventario/1", headers=cajero).json()["movimientos"]
-    assert [(m["tipo"], m["saldo_reconstruido"]) for m in movimientos] == [("SALIDA_VENTA", 20), ("ALTA", 24)]
+    assert [(m["tipo"], m["saldo_reconstruido"]) for m in movimientos] == [("SALIDA_VENTA", 44), ("ALTA", 48)]
 
 
 def _vender(cliente_http, cabeceras, lineas):
@@ -63,7 +63,7 @@ def test_resumen_del_dia_cuadra_con_sql_e_informa_ventas_sin_costo(cliente_http,
     assert resumen["mas_vendidos"][0]["codigo"] == "P0008"
     # % merma = 3.90 / (costo vendido 8.30 + 3.90) = 31.97 %
     assert (resumen["mermas"]["valor_perdido"], resumen["mermas"]["porcentaje_merma"]) == (3.9, 31.97)
-    assert resumen["catalogo"] == {"productos_activos": 8, "por_reponer": 1, "unidades": 212}  # 226 − 13 vendidas − 1 merma
+    assert resumen["catalogo"] == {"productos_activos": 8, "por_reponer": 2, "unidades": 224}  # 238 − 13 vendidas − 1 merma
     serie = resumen["ultimos_7_dias"]
     assert len(serie) == 7 and serie[-1]["total"] == 14.2 and sum(d["ventas"] for d in serie[:-1]) == 0
 
@@ -102,3 +102,10 @@ def test_t08_periodos_de_calendario_en_hora_de_lima():
         inicio, fin = intervalo(periodo, fecha)
         assert (inicio.date().isoformat(), fin.date().isoformat()) == (desde, hasta), periodo
     assert intervalo("DIARIO", date(2026, 11, 2))[0].utcoffset().total_seconds() == -5 * 3600
+
+
+def test_exportaciones_recientes_muestran_lo_auditado(cliente_http, propietario, cajero):
+    cliente_http.get(f"{API}/reportes/mermas", headers=propietario, params={"formato": "CSV"})
+    recientes = cliente_http.get(f"{API}/reportes/exportaciones", headers=propietario).json()
+    assert [(r["tipo_reporte"], r["formato"], r["generado_por"]) for r in recientes] == [("MERMAS", "CSV", "Cesar Dionicio")]
+    assert cliente_http.get(f"{API}/reportes/exportaciones", headers=cajero).status_code == 403
