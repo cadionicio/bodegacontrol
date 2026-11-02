@@ -1,0 +1,72 @@
+erDiagram
+    ROL ||--o{ USUARIO : asigna
+    USUARIO ||--o{ VENTA : registra
+    USUARIO ||--o{ VENTA_PAGO : verifica
+    USUARIO ||--o{ MOVIMIENTO_INVENTARIO : ejecuta
+    USUARIO ||--o{ REPORTE_EXPORTACION : genera
+    CLIENTE |o--o{ VENTA : "identifica (opcional)"
+    PRODUCTO ||--|| INVENTARIO_SALDO : mantiene
+    PRODUCTO ||--o{ DETALLE_VENTA : integra
+    PRODUCTO ||--o{ MOVIMIENTO_INVENTARIO : traza
+    VENTA ||--|{ DETALLE_VENTA : contiene
+    VENTA ||--|| VENTA_PAGO : "se cobra con"
+    DETALLE_VENTA ||--o| MOVIMIENTO_INVENTARIO : "origina salida"
+    ROL { smallint rol_id PK
+          varchar codigo UK "PROPIETARIO | CAJERO" }
+    USUARIO { bigint usuario_id PK
+          smallint rol_id FK
+          varchar nombre
+          varchar correo UK
+          text contrasena_hash "bcrypt"
+          boolean activo }
+    PRODUCTO { bigint producto_id PK
+          varchar codigo UK
+          varchar codigo_barras UK "EAN/UPC/QR, opcional"
+          varchar nombre
+          numeric precio "> 0"
+          numeric costo "NULL = desconocido"
+          int stock_minimo ">= 0"
+          boolean activo }
+    INVENTARIO_SALDO { bigint producto_id PK, FK
+          int cantidad ">= 0" }
+    CLIENTE { bigint cliente_id PK
+          varchar tipo_documento "NINGUNO|DNI|RUC|CE"
+          varchar numero_documento UK
+          varchar nombre
+          varchar telefono }
+    VENTA { bigint venta_id PK
+          bigint usuario_id FK
+          bigint cliente_id FK "NULL = cliente general"
+          uuid clave_idempotencia UK
+          char solicitud_firma "SHA-256"
+          timestamptz registrada_en }
+    DETALLE_VENTA { bigint detalle_id PK
+          bigint venta_id FK
+          bigint producto_id FK
+          int cantidad "> 0"
+          numeric precio_unitario "histórico"
+          numeric costo_unitario "histórico" }
+    VENTA_PAGO { bigint pago_id PK
+          bigint venta_id FK, UK
+          varchar metodo "EFECTIVO|YAPE|PLIN|TARJETA"
+          varchar modalidad_tarjeta "DEBITO|CREDITO"
+          numeric monto "= total"
+          numeric importe_recibido "solo efectivo"
+          varchar referencia_externa "solo electrónicos"
+          bigint verificado_por FK }
+    MOVIMIENTO_INVENTARIO { bigint movimiento_id PK
+          bigint producto_id FK
+          bigint usuario_id FK
+          bigint detalle_id FK, UK
+          varchar tipo "ALTA|ENTRADA|SALIDA_VENTA|MERMA"
+          int cantidad "> 0"
+          varchar motivo_merma "VENCIDO|DANADO|FALTANTE|OTRO"
+          numeric costo_unitario "solo MERMA"
+          varchar referencia }
+    REPORTE_EXPORTACION { bigint exportacion_id PK
+          bigint usuario_id FK
+          varchar tipo_reporte "VENTAS|PRODUCTOS|MERMAS"
+          varchar formato "PDF|CSV"
+          varchar periodo
+          timestamptz desde
+          timestamptz hasta_exclusivo }
