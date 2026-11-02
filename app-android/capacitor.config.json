@@ -1,0 +1,7 @@
+{
+  "appId": "pe.uni.grupo2.bodegacontrol",
+  "appName": "BodegaControl",
+  "webDir": "dist",
+  "android": { "allowMixedContent": false },
+  "plugins": { "SplashScreen": { "launchAutoHide": true } }
+}

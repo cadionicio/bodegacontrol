@@ -6,8 +6,8 @@ Taller 3 (API REST) y Taller 4 (Metodología Ágil Scrum) — SI806.
 ```
 base-datos/   Esquema PostgreSQL, datos iniciales, pruebas de integridad y diccionario de datos
 backend/      API REST FastAPI: controladores → servicios → repositorios
-app-android/  Cliente React + Capacitor (en construcción)
-docs/         Documentación de la API, colección Postman e informes (en construcción)
+app-android/  Cliente Android React + Capacitor (ver app-android/README.md para compilar el APK)
+docs/         Capturas de la app consumiendo la API real; documentación e informes (en construcción)
 ```
 
 ## Arquitectura
@@ -55,9 +55,17 @@ uvicorn app.main:app --reload --env-file .env
 # Integridad del esquema (44 casos) sobre la base cargada
 DATABASE_URL=postgresql://postgres:clave@localhost/bodega python base-datos/03_pruebas_esquema.py
 
-# API (44 casos, incluye T-01..T-09 del Plan Maestro). ¡La base indicada se BORRA y recrea!
+# API (46 casos, incluye T-01..T-09 del Plan Maestro). ¡La base indicada se BORRA y recrea!
 cd backend && DATABASE_URL_PRUEBAS=postgresql://postgres:clave@localhost/bodega_pruebas pytest pruebas -q
+
+# App consumiendo la API real (21 flujos de extremo a extremo, genera capturas en docs/capturas)
+cd app-android && npm run dev   # en otra terminal: node pruebas-e2e/recorrido.cjs
 ```
+
+## App Android
+
+Ver [`app-android/README.md`](app-android/README.md): `npm ci` → `npm run android` → Android Studio → *Build APK*.
+La dirección de la API se configura dentro de la app (ícono ⚙ del Login).
 
 ## Despliegue (Neon + Vercel)
 

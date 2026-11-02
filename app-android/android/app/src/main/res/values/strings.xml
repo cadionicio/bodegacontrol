@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">BodegaControl</string>
+    <string name="title_activity_main">BodegaControl</string>
+    <string name="package_name">pe.uni.grupo2.bodegacontrol</string>
+    <string name="custom_url_scheme">pe.uni.grupo2.bodegacontrol</string>
+</resources>
