@@ -25,7 +25,7 @@ app = FastAPI(title="BodegaControl API", version=VERSION, lifespan=ciclo_de_vida
               description="API REST propia para ventas, inventario, mermas y reportes de una bodega. "
                           "Autentíquese en `POST /api/v1/auth/login` y use el token con el botón **Authorize**.")
 app.add_middleware(CORSMiddleware, allow_origins=list(configuracion.origenes_cors),
-                   allow_methods=["GET", "POST", "PATCH", "DELETE"], allow_headers=["Authorization", "Content-Type"],
+                   allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE"], allow_headers=["Authorization", "Content-Type"],
                    expose_headers=["Content-Disposition"])
 registrar_manejadores(app)
 

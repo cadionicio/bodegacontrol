@@ -49,9 +49,17 @@ def _validar_disponibilidad(datos: VentaCrear, productos: dict[int, dict]) -> De
     return sum((productos[l.producto_id]["precio"] * l.cantidad for l in datos.lineas), Decimal("0"))
 
 
-def _respuesta(cx: Connection, venta_id: int, repetida: bool) -> dict:
-    return {"estado": "CONFIRMADA", "repetida": repetida, **repo.resumen(cx, venta_id),
-            "detalle": repo.lineas(cx, venta_id)}
+_DATOS_DEL_DUENO = ("costo_total", "ganancia")
+
+
+def _sin_costos(fila: dict, usuario: UsuarioSesion) -> dict:
+    """Costo y ganancia son información del propietario; el cajero no los recibe."""
+    return fila if usuario.rol != CAJERO else {k: v for k, v in fila.items() if k not in _DATOS_DEL_DUENO}
+
+
+def _respuesta(cx: Connection, usuario: UsuarioSesion, venta_id: int, repetida: bool) -> dict:
+    return _sin_costos({"estado": "CONFIRMADA", "repetida": repetida, **repo.resumen(cx, venta_id),
+                        "detalle": [_sin_costos(linea, usuario) for linea in repo.lineas(cx, venta_id)]}, usuario)
 
 
 def registrar(cx: Connection, usuario: UsuarioSesion, datos: VentaCrear) -> tuple[dict, bool]:
@@ -84,7 +92,7 @@ def registrar(cx: Connection, usuario: UsuarioSesion, datos: VentaCrear) -> tupl
                 repo_inventario.registrar_movimiento(cx, linea.producto_id, usuario.usuario_id, "SALIDA_VENTA",
                                                      linea.cantidad, detalle_id=detalle_id)
             repo.insertar_pago(cx, venta_id, pago, total, usuario.usuario_id)
-    return _respuesta(cx, venta_id, repetida=not es_nueva), es_nueva
+    return _respuesta(cx, usuario, venta_id, repetida=not es_nueva), es_nueva
 
 
 def obtener(cx: Connection, usuario: UsuarioSesion, venta_id: int) -> dict:
@@ -92,14 +100,14 @@ def obtener(cx: Connection, usuario: UsuarioSesion, venta_id: int) -> dict:
     # Un cajero solo ve sus ventas; 404 (no 403) para no revelar que la venta existe.
     if not venta or (usuario.rol == CAJERO and venta["usuario_id"] != usuario.usuario_id):
         raise no_encontrado("La venta")
-    return _respuesta(cx, venta_id, repetida=False)
+    return _respuesta(cx, usuario, venta_id, repetida=False)
 
 
 def estado_por_clave(cx: Connection, usuario: UsuarioSesion, clave: UUID) -> tuple[int, dict]:
     """Reconciliación tras un timeout (RF-10): la app consulta antes de reintentar."""
     venta = repo.buscar_por_clave(cx, clave)
     if venta and (usuario.rol != CAJERO or venta["usuario_id"] == usuario.usuario_id):
-        return 200, _respuesta(cx, venta["venta_id"], repetida=True)
+        return 200, _respuesta(cx, usuario, venta["venta_id"], repetida=True)
     if repo.clave_en_proceso(cx, clave):
         return 202, {"estado": "EN_PROCESO", "mensaje": "La venta se está registrando; consulte en unos segundos"}
     raise ErrorNegocio(404, "VENTA_NO_REGISTRADA",
@@ -110,4 +118,5 @@ def estado_por_clave(cx: Connection, usuario: UsuarioSesion, clave: UUID) -> tup
 def listar(cx: Connection, usuario: UsuarioSesion, desde: date | None, hasta: date | None,
            antes_de: int | None, limite: int) -> list[dict]:
     inicio, fin = intervalo_de_fechas(desde, hasta)
-    return repo.listar(cx, inicio, fin, usuario.usuario_id if usuario.rol == CAJERO else None, antes_de, limite)
+    filas = repo.listar(cx, inicio, fin, usuario.usuario_id if usuario.rol == CAJERO else None, antes_de, limite)
+    return [_sin_costos(fila, usuario) for fila in filas]

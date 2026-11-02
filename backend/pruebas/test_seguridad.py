@@ -1,4 +1,6 @@
 """Autenticación, autorización por rol (T-07) y manejo de solicitudes inválidas."""
+import uuid
+
 from conftest import CAJERO
 
 API = "/api/v1"
@@ -61,3 +63,21 @@ def test_json_mal_formado_devuelve_400_con_campos(cliente_http, propietario):
     cuerpo = respuesta.json()
     assert respuesta.status_code == 400 and cuerpo["codigo"] == "SOLICITUD_INVALIDA"
     assert {"codigo", "nombre", "precio"} <= {error["campo"] for error in cuerpo["errores"]}
+
+
+def test_cajero_no_recibe_costo_ni_ganancia_de_sus_ventas(cliente_http, cajero):
+    venta = cliente_http.post(f"{API}/ventas", headers=cajero, json={
+        "clave_idempotencia": str(uuid.uuid4()), "lineas": [{"producto_id": 1, "cantidad": 1}],
+        "pago": {"metodo": "EFECTIVO", "importe_recibido": 5}}).json()
+    historial = cliente_http.get(f"{API}/ventas", headers=cajero).json()
+    for fila in (venta, venta["detalle"][0], historial[0]):
+        assert "ganancia" not in fila and "costo_total" not in fila
+
+
+def test_cors_permite_todos_los_metodos_que_usa_la_app(cliente_http):
+    """La app Android (origen https://localhost) usa GET, POST, PUT, PATCH y DELETE."""
+    for metodo in ("GET", "POST", "PUT", "PATCH", "DELETE"):
+        respuesta = cliente_http.options(f"{API}/productos/1/imagen", headers={
+            "Origin": "https://localhost", "Access-Control-Request-Method": metodo,
+            "Access-Control-Request-Headers": "authorization,content-type"})
+        assert respuesta.status_code == 200, metodo

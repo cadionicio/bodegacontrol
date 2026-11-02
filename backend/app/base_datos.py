@@ -11,8 +11,11 @@ from app.configuracion import configuracion
 # agrupa explícitamente con `with conexion.transaction()` en su servicio. Así el COMMIT (y las
 # validaciones diferidas de la BD) ocurre ANTES de responder, nunca después de enviar un 201.
 # open=False: el pool se abre en el ciclo de vida de la app, no al importar (requisito en Vercel).
+# check: Neon suspende la base tras 5 min sin uso y corta las conexiones; verificar cada conexión antes
+# de entregarla evita que la primera petición tras la inactividad falle con una conexión muerta.
 pool = ConnectionPool(configuracion.url_base_datos, min_size=1, max_size=configuracion.tamano_pool,
-                      open=False, kwargs={"row_factory": dict_row, "autocommit": True})
+                      open=False, check=ConnectionPool.check_connection, max_idle=240,
+                      kwargs={"row_factory": dict_row, "autocommit": True})
 
 
 def obtener_conexion() -> Iterator[Connection]:
