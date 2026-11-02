@@ -1,0 +1,30 @@
+# Entorno local reproducible: PostgreSQL con esquema y datos iniciales + API en http://localhost:8000/docs
+# Uso: docker compose up --build
+services:
+  base_datos:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: bodega
+      POSTGRES_USER: bodega
+      POSTGRES_PASSWORD: bodega_local
+    volumes:
+      # PostgreSQL ejecuta estos scripts en orden alfabético solo la primera vez (volumen vacío).
+      - ./base-datos/01_esquema.sql:/docker-entrypoint-initdb.d/01_esquema.sql:ro
+      - ./base-datos/02_datos_iniciales.sql:/docker-entrypoint-initdb.d/02_datos_iniciales.sql:ro
+      - datos_postgres:/var/lib/postgresql/data
+    ports: ["5432:5432"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U bodega -d bodega"]
+      interval: 3s
+      retries: 20
+  api:
+    build: ./backend
+    environment:
+      DATABASE_URL: postgresql://bodega:bodega_local@base_datos:5432/bodega
+      JWT_SECRETO: ${JWT_SECRETO:-solo-para-desarrollo-local-no-usar-en-produccion}
+    depends_on:
+      base_datos:
+        condition: service_healthy
+    ports: ["8000:8000"]
+volumes:
+  datos_postgres:
