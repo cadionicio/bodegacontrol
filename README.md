@@ -3,12 +3,14 @@
 **Ventas, inventario y reportes de una bodega desde el celular, con datos que siempre cuadran.**
 App Android (React + Capacitor) conectada a una API REST propia (FastAPI) y a PostgreSQL. Cada venta descuenta el stock en el momento, nunca se duplica y alimenta reportes en PDF y CSV.
 
+**API en línea:** <https://bodegacontrol.vercel.app/docs> (documentación interactiva) · estado en <https://bodegacontrol.vercel.app/api/v1/salud>
+
 <p>
   <img src="https://img.shields.io/badge/versión-1.0.0-087744" alt="Versión 1.0.0">
   <img src="https://img.shields.io/badge/pruebas-pasando-087744" alt="Pruebas pasando">
   <img src="https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white" alt="Python 3.12">
   <img src="https://img.shields.io/badge/FastAPI-0.162-009688?logo=fastapi&logoColor=white" alt="FastAPI">
-  <img src="https://img.shields.io/badge/PostgreSQL-16-4169E1?logo=postgresql&logoColor=white" alt="PostgreSQL 16">
+  <img src="https://img.shields.io/badge/PostgreSQL-16%2B-4169E1?logo=postgresql&logoColor=white" alt="PostgreSQL 16+">
   <img src="https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black" alt="React 19">
   <img src="https://img.shields.io/badge/Capacitor-8-119EFF?logo=capacitor&logoColor=white" alt="Capacitor 8">
   <img src="https://img.shields.io/badge/licencia-por%20definir-lightgrey" alt="Licencia por definir">
@@ -120,7 +122,7 @@ flowchart LR
 | **Repositorios** | SQL parametrizado, sin lógica de negocio. |
 | **PostgreSQL** | 11 tablas, 6 vistas y 10 funciones con triggers: stock derivado de movimientos, registros inmutables y validación de venta completa. |
 
-En producción, la API corre en **Vercel** y la base de datos en **Neon**. Para desarrollo local se usa **Docker**.
+En producción, la API corre en **Vercel** y la base de datos en **Neon** (PostgreSQL 18), ambas en la región de **São Paulo** para reducir la latencia. Para desarrollo local se usa **Docker** (PostgreSQL 16).
 
 ## Contenido del repositorio
 
@@ -165,9 +167,9 @@ bodegacontrol/
 |---|---|---|
 | [Git](https://git-scm.com) | Reciente | Clonar el repositorio |
 | [Docker Desktop](https://www.docker.com/products/docker-desktop/) | Reciente | Base de datos y API locales (recomendado) |
-| [Node.js](https://nodejs.org) | **22 LTS** | App en el navegador y compilación del APK |
+| [Node.js](https://nodejs.org) | **22 o 24 LTS** | App en el navegador y compilación del APK |
 | [Python](https://www.python.org/downloads/) | **3.12** | Pruebas automáticas o API sin Docker |
-| [Android Studio](https://developer.android.com/studio) | Quail 2026.1 o superior | Generar el APK |
+| [Android Studio](https://developer.android.com/studio) | Quail 2026.1 o superior, con **JDK 21** para Gradle | Generar el APK |
 | [Postman](https://www.postman.com/downloads/) | Reciente | Probar la API (opcional) |
 
 ## Instalación y ejecución
@@ -243,15 +245,27 @@ npm run android                      # compila la app web y la copia al proyecto
 npx cap open android                 # abre Android Studio
 ```
 
-En Android Studio: **Build → Build App Bundle(s) / APK(s) → Build APK(s)**. El archivo queda en `android/app/build/outputs/apk/debug/app-debug.apk`. Más detalles en [`app-android/README.md`](app-android/README.md).
+Si Android Studio pide elegir la JVM de Gradle, seleccione **JVM 21** (Gradle 8.14 no admite Java 25). Luego: **Build → Build App Bundle(s) / APK(s) → Build APK(s)**. El archivo queda en `android/app/build/outputs/apk/debug/app-debug.apk`. Más detalles en [`app-android/README.md`](app-android/README.md).
 
 > Android solo permite servidores **HTTPS**. La dirección de la API se puede cambiar dentro de la app con el ícono ⚙ de la pantalla de inicio de sesión.
 
 ## Despliegue en la nube
 
-1. **Neon:** crear un proyecto de PostgreSQL y, en *SQL Editor*, ejecutar `01_esquema.sql` y luego `02_datos_iniciales.sql`. Copiar la cadena de conexión **directa** (sin `-pooler`).
-2. **Vercel:** importar el repositorio con *Root Directory* = `backend` y cargar `DATABASE_URL`, `JWT_SECRETO` y `TAMANO_POOL=2` en *Environment Variables*.
-3. **Verificar:** `https://<proyecto>.vercel.app/api/v1/salud` debe responder `{"estado": "OK"}`.
+La versión actual está desplegada en <https://bodegacontrol.vercel.app>. Para reproducir el despliegue:
+
+1. **Neon (base de datos):**
+   - Crear un proyecto en la región **AWS São Paulo** (`sa-east-1`).
+   - En *SQL Editor*, ejecutar `01_esquema.sql` y luego `05_datos_demostracion.sql` (con 30 días de historial) o `02_datos_iniciales.sql` (sin historial). Use solo uno de los dos.
+   - Fijar la hora de Perú para las consultas: `ALTER DATABASE neondb SET timezone TO 'America/Lima';`
+   - Copiar la cadena de conexión **directa** (sin `-pooler`).
+2. **Vercel (API):**
+   - Importar el repositorio con *Root Directory* = `backend` (se detecta FastAPI).
+   - Cargar `DATABASE_URL`, `JWT_SECRETO` y `TAMANO_POOL=2` en *Environment Variables*.
+   - En *Settings → Functions → Function Region*, elegir **São Paulo (gru1)** y volver a desplegar.
+3. **Verificar:**
+   - `https://<proyecto>.vercel.app/api/v1/salud` debe responder `{"estado": "OK"}`.
+   - La cabecera `x-vercel-id` de la respuesta debe terminar la lista de regiones en `gru1`.
+4. **Actualizaciones:** cada `git push` a `main` vuelve a desplegar la API automáticamente.
 
 ## Guía de uso
 
@@ -261,8 +275,9 @@ En Android Studio: **Build → Build App Bundle(s) / APK(s) → Build APK(s)**. 
 |---|---|---|
 | Propietario | `cadionicio@gmail.com` | `Propietario2026` |
 | Cajero | `giancarlo@uni.pe` | `Cajero2026` |
+| Cajero | `ernesto@uni.pe` | `Ernesto2026` |
 
-> Son credenciales de demostración incluidas en `02_datos_iniciales.sql`. Cámbielas antes de usar el sistema con datos reales.
+> Son credenciales de demostración. `02_datos_iniciales.sql` crea las dos primeras; `05_datos_demostracion.sql`, las tres. Cámbielas antes de usar el sistema con datos reales.
 
 ### Registrar una venta
 
@@ -342,7 +357,7 @@ Todas las respuestas de error usan el mismo formato:
 
 ## Estado del proyecto y hoja de ruta
 
-**Estado:** versión 1.0 funcional. La API, la base de datos y la app están completas y probadas.
+**Estado:** versión 1.0 funcional y desplegada. La API, la base de datos y la app están completas, probadas y en línea en Vercel y Neon.
 
 **Mejoras planificadas:**
 - [ ] Cierre de caja por turno, con arqueo de efectivo.
