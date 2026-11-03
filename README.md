@@ -130,6 +130,7 @@ bodegacontrol/
 │   ├── 01_esquema.sql          Tablas, restricciones, triggers y vistas
 │   ├── 02_datos_iniciales.sql  Usuarios y catálogo de demostración
 │   ├── 03_pruebas_esquema.py   47 pruebas de integridad directas contra PostgreSQL
+│   ├── 05_datos_demostracion.sql Alternativa a 02 con 30 días de historial (datos de demostración)
 │   ├── 04_modelo_er.png        Diagrama entidad-relación
 │   └── DICCIONARIO_DE_DATOS.md Descripción de cada tabla y atributo
 ├── backend/                    API REST
