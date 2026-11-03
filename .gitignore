@@ -22,3 +22,7 @@ app-android/android/local.properties
 .idea/
 .DS_Store
 Thumbs.db
+# Documentos de entrega (se entregan aparte, no van al repositorio)
+*.docx
+*.doc
+*.pdf
