@@ -40,7 +40,7 @@ def obtener_por_codigo_barras(cx: Connection, usuario: UsuarioSesion, codigo_bar
     producto = repo.obtener_por_codigo_barras(cx, codigo_barras.strip())
     if not producto or not producto["activo"]:
         # 404 permite a la app conservar el formulario y ofrecer búsqueda manual (matriz de errores 3.2).
-        raise no_encontrado("Ningún producto activo con ese código de barras")
+        raise ErrorNegocio(404, "NO_ENCONTRADO", "No hay un producto activo con ese código de barras")
     return presentar(producto, usuario)
 
 

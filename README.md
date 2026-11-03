@@ -7,7 +7,7 @@ Taller 3 (API REST) y Taller 4 (Metodología Ágil Scrum) — SI806.
 base-datos/   Esquema PostgreSQL, datos iniciales, pruebas de integridad y diccionario de datos
 backend/      API REST FastAPI: controladores → servicios → repositorios
 app-android/  Cliente Android React + Capacitor (ver app-android/README.md para compilar el APK)
-docs/         Capturas de la app consumiendo la API real; documentación e informes (en construcción)
+docs/         Documentación de la API (API.md), colección Postman y capturas de la app consumiendo la API real
 ```
 
 ## Arquitectura
@@ -58,8 +58,11 @@ DATABASE_URL=postgresql://postgres:clave@localhost/bodega python base-datos/03_p
 # API (47 casos, incluye T-01..T-09 del Plan Maestro). ¡La base indicada se BORRA y recrea!
 cd backend && DATABASE_URL_PRUEBAS=postgresql://postgres:clave@localhost/bodega_pruebas pytest pruebas -q
 
+# Colección Postman con Newman (49 solicitudes, 68 verificaciones) contra la API local
+cd docs/postman && npx newman run BodegaControl.postman_collection.json -e BodegaControl.local.postman_environment.json --working-dir .
+
 # App consumiendo la API real (21 flujos de extremo a extremo, genera capturas en docs/capturas)
-cd app-android && npm run dev   # en otra terminal: node pruebas-e2e/recorrido.cjs
+cd app-android && VITE_API_URL=http://localhost:8000 npm run dev   # en otra terminal: node pruebas-e2e/recorrido.cjs
 ```
 
 ## App Android
@@ -74,6 +77,10 @@ La dirección de la API se configura dentro de la app (ícono ⚙ del Login).
 3. Verificar `https://<proyecto>.vercel.app/api/v1/salud` → `{"estado": "OK"}`.
 
 ## Endpoints (`/api/v1`)
+
+Documentación completa con parámetros, ejemplos JSON reales y códigos HTTP: [`docs/API.md`](docs/API.md).
+Swagger interactivo en `/docs`. Colección Postman y entornos (local y Vercel) en [`docs/postman/`](docs/postman/).
+
 
 | Método | Ruta | Rol | Descripción |
 |---|---|---|---|

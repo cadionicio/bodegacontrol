@@ -55,7 +55,8 @@ def test_patch_vacio_o_inexistente(cliente_http, propietario):
 def test_escaneo_encuentra_producto_o_404_para_busqueda_manual(cliente_http, propietario, cajero):
     cliente_http.post(API, headers=propietario, json=NUEVO)
     assert cliente_http.get(f"{API}/codigo-barras/7750885001234", headers=cajero).json()["codigo"] == "P0009"
-    assert cliente_http.get(f"{API}/codigo-barras/0000000000000", headers=cajero).status_code == 404
+    ausente = cliente_http.get(f"{API}/codigo-barras/0000000000000", headers=cajero)
+    assert ausente.status_code == 404 and ausente.json()["mensaje"] == "No hay un producto activo con ese código de barras"
 
 
 def test_filtro_por_reponer(cliente_http, cajero):
